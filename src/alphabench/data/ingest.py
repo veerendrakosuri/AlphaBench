@@ -47,12 +47,16 @@ def run_ingest(
 def run_validate(cfg: Config) -> dict:
     panel = Repository(cfg.data.raw_dir).read("ohlcv")
 
-    # Prefer adjusted prices everywhere downstream.
+    # Prefer adjusted prices everywhere downstream. Rescale close by the same
+    # ratio as open/high/low (rather than assigning adj_close directly) so
+    # IEEE-754 multiplication monotonicity guarantees open/close stay within
+    # [low, high] exactly — (adj_close/close)*close is not bit-identical to
+    # adj_close, and that gap alone was enough to violate the bound check on
+    # degenerate zero-volume bars where close started exactly at high/low.
     if "adj_close" in panel.columns:
         ratio = (panel["adj_close"] / panel["close"]).fillna(1.0)
-        for col in ["open", "high", "low"]:
+        for col in ["open", "high", "low", "close"]:
             panel[col] = panel[col] * ratio
-        panel["close"] = panel["adj_close"]
         panel = panel.drop(columns=["adj_close"])
 
     report = validate_panel(panel, strict=True)
