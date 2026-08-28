@@ -2,38 +2,11 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import pytest
 from lightgbm import LGBMClassifier
 from sklearn.metrics import roc_auc_score
 
 from alphabench.validation.leakage import assert_no_feature_leak, assert_train_precedes_val
 from alphabench.validation.splitters import WalkForwardSplit
-
-
-@pytest.fixture
-def synthetic_panel() -> pd.DataFrame:
-    """Pure random walk: by construction there is NO signal. Any model that
-    finds one is finding a bug in our pipeline."""
-    rng = np.random.default_rng(0)
-    dates = pd.bdate_range("2015-01-01", "2024-12-31")
-    frames = []
-    for sym in ["AAA", "BBB", "CCC"]:
-        r = rng.normal(0, 0.01, len(dates))
-        close = 100 * np.exp(np.cumsum(r))
-        frames.append(
-            pd.DataFrame(
-                {
-                    "date": dates,
-                    "symbol": sym,
-                    "close": close,
-                    "open": close * (1 + rng.normal(0, 0.001, len(dates))),
-                    "high": close * (1 + abs(rng.normal(0, 0.004, len(dates)))),
-                    "low": close * (1 - abs(rng.normal(0, 0.004, len(dates)))),
-                    "volume": rng.integers(1e6, 5e6, len(dates)),
-                }
-            )
-        )
-    return pd.concat(frames, ignore_index=True)
 
 
 def test_splitter_train_always_precedes_validation(synthetic_panel):
