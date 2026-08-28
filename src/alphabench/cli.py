@@ -1,8 +1,14 @@
 from __future__ import annotations
 
+import json
 from functools import reduce
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")  # headless-safe backend; this is a CLI, not a notebook
+
+import matplotlib.pyplot as plt
 import pandas as pd
 import typer
 from rich.console import Console
@@ -11,6 +17,8 @@ from alphabench import config as config_mod
 from alphabench import logging_conf
 from alphabench.data import ingest
 from alphabench.data.repository import Repository
+from alphabench.evaluation.backtest import cost_sensitivity, run_backtest
+from alphabench.evaluation.robustness import block_bootstrap_sharpe, by_period
 from alphabench.features import pipeline
 from alphabench.models.baselines import b0_majority, b0_persistence, b1_logistic
 from alphabench.targets import builder as targets
@@ -200,6 +208,97 @@ def tune_cmd(
     console.print(f"best value: {study.best_value:.4f}")
     console.print(f"trials run: {len(study.trials)}")
     console.print(f"best params: {study.best_params}")
+
+
+@app.command(name="backtest")
+def backtest_cmd(
+    model: str = typer.Option("lightgbm", "--model", help="Model to backtest"),
+    horizon: int = typer.Option(1, "--horizon", help="Target horizon in days"),
+) -> None:
+    """Cost-aware backtest + robustness checks on out-of-fold predictions."""
+    if model != "lightgbm":
+        raise NotImplementedError(
+            f"model={model!r} is not implemented; only 'lightgbm' is supported"
+        )
+
+    logging_conf.setup_logging()
+    cfg = config_mod.load_config()
+
+    processed = Repository(cfg.data.processed_dir)
+    oof_name = f"oof_predictions_h{horizon}"
+    if not processed.exists(oof_name):
+        raise FileNotFoundError(
+            f"{oof_name}.parquet not found in {cfg.data.processed_dir} — "
+            f"run `alphabench train --model lightgbm --horizon {horizon}` first."
+        )
+    oof = processed.read(oof_name)
+
+    result = run_backtest(
+        oof,
+        proba_col="proba",
+        threshold=cfg.backtest.prob_threshold,
+        commission_bps=cfg.backtest.commission_bps,
+        slippage_bps=cfg.backtest.slippage_bps,
+        allow_short=cfg.backtest.allow_short,
+    )
+    cost_df = cost_sensitivity(oof, proba_col="proba", threshold=cfg.backtest.prob_threshold)
+    boot = block_bootstrap_sharpe(result["daily"]["net"])
+    period_df = by_period(result["trades"])
+
+    console.print("[bold]Backtest metrics[/bold]")
+    metrics_df = pd.DataFrame(result["metrics"].items(), columns=["metric", "value"])
+    console.print(metrics_df.to_string(index=False))
+
+    console.print("\n[bold]Cost sensitivity[/bold]")
+    console.print(cost_df.to_string(index=False))
+
+    console.print("\n[bold]Block-bootstrap Sharpe CI[/bold]")
+    console.print(
+        f"sharpe={boot['sharpe']:.4f}  "
+        f"CI=[{boot['ci_lower']:.4f}, {boot['ci_upper']:.4f}]  "
+        f"p(sharpe>0)={boot['p_gt_zero']:.4f}"
+    )
+
+    console.print("\n[bold]Per-year breakdown[/bold]")
+    console.print(period_df.to_string())
+
+    reports_dir = Path("reports/metrics")
+    reports_dir.mkdir(parents=True, exist_ok=True)
+
+    # by_period's index is a Timestamp (period end) and isn't JSON-serialisable directly.
+    by_period_records = period_df.reset_index()
+    by_period_records[by_period_records.columns[0]] = by_period_records[
+        by_period_records.columns[0]
+    ].astype(str)
+
+    combined = {
+        "metrics": result["metrics"],
+        "cost_sensitivity": cost_df.to_dict(orient="records"),
+        "bootstrap_sharpe": boot,
+        "by_period": by_period_records.to_dict(orient="records"),
+    }
+    (reports_dir / "backtest_results.json").write_text(json.dumps(combined, indent=2))
+
+    figures_dir = Path("reports/figures")
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.plot(result["equity"].index, result["equity"].to_numpy(), label="Strategy (net of costs)")
+    ax.plot(
+        result["equity_bench"].index,
+        result["equity_bench"].to_numpy(),
+        label="Benchmark (buy & hold)",
+    )
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Equity (starting at 1.0)")
+    ax.set_title(f"AlphaBench LightGBM h{horizon} — Equity Curve (net of costs)")
+    ax.legend()
+    fig.tight_layout()
+    fig_path = figures_dir / f"equity_curve_h{horizon}.png"
+    fig.savefig(fig_path, dpi=150)
+    plt.close(fig)
+
+    console.print(f"\n[green]wrote[/green] {reports_dir / 'backtest_results.json'}")
+    console.print(f"[green]wrote[/green] {fig_path}")
 
 
 if __name__ == "__main__":

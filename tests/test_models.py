@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import pandas as pd
 
@@ -21,8 +21,14 @@ class _FakeValidationCfg:
 
 
 @dataclass
+class _FakeDataCfg:
+    processed_dir: str = "processed"
+
+
+@dataclass
 class _FakeCfg:
     validation: _FakeValidationCfg
+    data: _FakeDataCfg = field(default_factory=_FakeDataCfg)
 
 
 def test_train_walkforward_smoke(tmp_path, monkeypatch, synthetic_panel):
@@ -71,3 +77,10 @@ def test_train_walkforward_smoke(tmp_path, monkeypatch, synthetic_panel):
 
     mean_auc = res["auc"].mean()
     assert 0.35 <= mean_auc <= 0.65, f"mean AUC {mean_auc:.3f} — should be noise on a random walk"
+
+    oof_path = tmp_path / "processed" / "oof_predictions_h1.parquet"
+    assert oof_path.exists()
+    oof = pd.read_parquet(oof_path)
+    assert set(oof.columns) == {"date", "symbol", "proba", "y_dir_1d", "fwd_ret_1d"}
+    assert len(oof) == int(res["n_val"].sum())
+    assert oof["proba"].between(0.0, 1.0).all()

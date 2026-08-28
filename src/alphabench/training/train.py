@@ -10,6 +10,7 @@ import pandas as pd
 from lightgbm import LGBMClassifier, early_stopping, log_evaluation
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 
+from alphabench.data.repository import Repository
 from alphabench.validation.splitters import WalkForwardSplit
 
 log = logging.getLogger(__name__)
@@ -62,8 +63,11 @@ def train_walkforward(
         embargo_days=cfg.validation.embargo_days,
     )
 
+    fwd_ret_col = f"fwd_ret_{horizon}d"
+
     mlflow.set_experiment("alphabench")
     rows = []
+    oof_rows = []
     with mlflow.start_run(run_name=f"lightgbm_h{horizon}"):
         mlflow.log_params({**params, "horizon": horizon, "n_features": len(cols)})
 
@@ -81,6 +85,18 @@ def train_walkforward(
                 callbacks=[early_stopping(100, verbose=False), log_evaluation(0)],
             )
             proba = model.predict_proba(Xva)[:, 1]  # type: ignore[call-overload]
+
+            oof_rows.append(
+                pd.DataFrame(
+                    {
+                        "date": df.loc[va, "date"].to_numpy(),
+                        "symbol": df.loc[va, "symbol"].to_numpy(),
+                        "proba": proba,
+                        y_col: yva.to_numpy(),
+                        fwd_ret_col: df.loc[va, fwd_ret_col].to_numpy(),
+                    }
+                )
+            )
 
             m = {
                 "fold": i,
@@ -133,6 +149,9 @@ def train_walkforward(
                 indent=2,
             )
         )
+
+    oof = pd.concat(oof_rows, ignore_index=True)
+    Repository(cfg.data.processed_dir).write(oof, f"oof_predictions_h{horizon}")
 
     res.to_json("reports/metrics/walkforward_results.json", orient="records", indent=2)
     print(res.to_string(index=False))
