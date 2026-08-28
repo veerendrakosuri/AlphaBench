@@ -1,0 +1,34 @@
+# Alternate/generalisation-test universe (Week 9) — run the identical
+# pipeline on this independent market per PROPOSAL.md §3.1.
+tickers:
+  - {symbol: AAPL,  sector: Technology}
+  - {symbol: MSFT,  sector: Technology}
+  - {symbol: NVDA,  sector: Technology}
+  - {symbol: AVGO,  sector: Technology}
+  - {symbol: JPM,   sector: Financials}
+  - {symbol: BAC,   sector: Financials}
+  - {symbol: GS,    sector: Financials}
+  - {symbol: BRK-B, sector: Financials}
+  - {symbol: JNJ,   sector: Healthcare}
+  - {symbol: UNH,   sector: Healthcare}
+  - {symbol: PFE,   sector: Healthcare}
+  - {symbol: ABBV,  sector: Healthcare}
+  - {symbol: XOM,   sector: Energy}
+  - {symbol: CVX,   sector: Energy}
+  - {symbol: COP,   sector: Energy}
+  - {symbol: PG,    sector: ConsumerStaples}
+  - {symbol: KO,    sector: ConsumerStaples}
+  - {symbol: WMT,   sector: ConsumerStaples}
+  - {symbol: COST,  sector: ConsumerStaples}
+  - {symbol: HD,    sector: ConsumerDiscretionary}
+  - {symbol: MCD,   sector: ConsumerDiscretionary}
+  - {symbol: NKE,   sector: ConsumerDiscretionary}
+  - {symbol: CAT,   sector: Industrials}
+  - {symbol: BA,    sector: Industrials}
+  - {symbol: UNP,   sector: Industrials}
+  - {symbol: HON,   sector: Industrials}
+  - {symbol: LIN,   sector: Materials}
+  - {symbol: NEE,   sector: Utilities}
+  - {symbol: AMT,   sector: RealEstate}
+  - {symbol: VZ,    sector: CommunicationServices}
+benchmark: SPY

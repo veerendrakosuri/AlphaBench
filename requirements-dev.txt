@@ -1,0 +1,30 @@
+# AlphaBench — development dependencies
+#   pip install -r requirements.txt -r requirements-dev.txt
+
+-r requirements.txt
+
+# ---- testing ----------------------------------------------------------------
+pytest==9.1.1
+pytest-cov==7.1.0
+pytest-mock==3.15.1
+hypothesis==6.142.5           # property-based tests for the splitter invariants
+
+# ---- linting & typing -------------------------------------------------------
+ruff==0.16.4                  # replaces black + isort + flake8 in one binary
+mypy==2.3.1
+pre-commit==4.6.2
+
+# ---- notebooks --------------------------------------------------------------
+jupyterlab==4.6.3
+ipykernel==7.3.0
+nbconvert==7.16.6             # used by the pre-commit hook that strips outputs
+
+# ---- plotting (figures for the report) --------------------------------------
+matplotlib==3.11.1
+seaborn==0.13.2
+
+# ---- interpretability -------------------------------------------------------
+shap==0.52.0
+
+# ---- deployment helper ------------------------------------------------------
+huggingface-hub==1.2.2        # pushing the dashboard Space

@@ -1,0 +1,36 @@
+# Primary universe: 30 NSE large-caps spread across sectors (avoid sector
+# concentration — see PROPOSAL.md §3.1). Verify each symbol resolves via
+# yfinance during Stage 1 ingestion; NSE corporate-action data quality is
+# thinner than US, so spot-check a sample against a second provider (§5.3).
+tickers:
+  - {symbol: RELIANCE.NS,   sector: Energy}
+  - {symbol: ONGC.NS,       sector: Energy}
+  - {symbol: BPCL.NS,       sector: Energy}
+  - {symbol: TCS.NS,        sector: IT}
+  - {symbol: INFY.NS,       sector: IT}
+  - {symbol: HCLTECH.NS,    sector: IT}
+  - {symbol: WIPRO.NS,      sector: IT}
+  - {symbol: HDFCBANK.NS,   sector: Financials}
+  - {symbol: ICICIBANK.NS,  sector: Financials}
+  - {symbol: KOTAKBANK.NS,  sector: Financials}
+  - {symbol: SBIN.NS,       sector: Financials}
+  - {symbol: AXISBANK.NS,   sector: Financials}
+  - {symbol: BAJFINANCE.NS, sector: Financials}
+  - {symbol: SUNPHARMA.NS,  sector: Healthcare}
+  - {symbol: DRREDDY.NS,    sector: Healthcare}
+  - {symbol: CIPLA.NS,      sector: Healthcare}
+  - {symbol: DIVISLAB.NS,   sector: Healthcare}
+  - {symbol: HINDUNILVR.NS, sector: ConsumerStaples}
+  - {symbol: ITC.NS,        sector: ConsumerStaples}
+  - {symbol: NESTLEIND.NS,  sector: ConsumerStaples}
+  - {symbol: BRITANNIA.NS,  sector: ConsumerStaples}
+  - {symbol: MARUTI.NS,     sector: ConsumerDiscretionary}
+  - {symbol: TITAN.NS,      sector: ConsumerDiscretionary}
+  - {symbol: TATAMOTORS.NS, sector: ConsumerDiscretionary}
+  - {symbol: LT.NS,         sector: Industrials}
+  - {symbol: ADANIPORTS.NS, sector: Industrials}
+  - {symbol: ULTRACEMCO.NS, sector: Materials}
+  - {symbol: JSWSTEEL.NS,   sector: Materials}
+  - {symbol: NTPC.NS,       sector: Utilities}
+  - {symbol: BHARTIARTL.NS, sector: CommunicationServices}
+benchmark: ^NSEI
