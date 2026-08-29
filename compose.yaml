@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports: ["8000:8000"]
+    environment:
+      - PORT=8000
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: docker/dashboard.Dockerfile
+    ports: ["8501:8501"]
+    environment:
+      - API_URL=http://api:8000     # service name, not localhost
+      - PORT=8501
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

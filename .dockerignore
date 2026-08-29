@@ -1,0 +1,12 @@
+.venv/
+.git/
+__pycache__/
+data/raw/
+data/interim/
+mlruns/
+notebooks/
+tests/
+reports/figures/
+*.ipynb
+.pytest_cache/
+.ruff_cache/
