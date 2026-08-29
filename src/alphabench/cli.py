@@ -17,7 +17,7 @@ from alphabench import config as config_mod
 from alphabench import logging_conf
 from alphabench.data import ingest
 from alphabench.data.repository import Repository
-from alphabench.evaluation.backtest import cost_sensitivity, run_backtest
+from alphabench.evaluation.backtest import cost_sensitivity, run_backtest, threshold_sensitivity
 from alphabench.evaluation.robustness import block_bootstrap_sharpe, by_period
 from alphabench.features import pipeline
 from alphabench.models.baselines import b0_majority, b0_persistence, b1_logistic
@@ -242,6 +242,12 @@ def backtest_cmd(
         allow_short=cfg.backtest.allow_short,
     )
     cost_df = cost_sensitivity(oof, proba_col="proba", threshold=cfg.backtest.prob_threshold)
+    threshold_df = threshold_sensitivity(
+        oof,
+        proba_col="proba",
+        commission_bps=cfg.backtest.commission_bps,
+        slippage_bps=cfg.backtest.slippage_bps,
+    )
     boot = block_bootstrap_sharpe(result["daily"]["net"])
     period_df = by_period(result["trades"])
 
@@ -251,6 +257,9 @@ def backtest_cmd(
 
     console.print("\n[bold]Cost sensitivity[/bold]")
     console.print(cost_df.to_string(index=False))
+
+    console.print("\n[bold]Threshold sensitivity[/bold]")
+    console.print(threshold_df.to_string(index=False))
 
     console.print("\n[bold]Block-bootstrap Sharpe CI[/bold]")
     console.print(
@@ -274,6 +283,7 @@ def backtest_cmd(
     combined = {
         "metrics": result["metrics"],
         "cost_sensitivity": cost_df.to_dict(orient="records"),
+        "threshold_sensitivity": threshold_df.to_dict(orient="records"),
         "bootstrap_sharpe": boot,
         "by_period": by_period_records.to_dict(orient="records"),
     }

@@ -31,6 +31,10 @@ validation:
 backtest:
   commission_bps: 5.0
   slippage_bps: 5.0
-  prob_threshold: 0.55
+  prob_threshold: 0.5164   # empirically calibrated: this model's OOF probabilities
+                            # (h=1) range ~0.463-0.531 with almost all mass near 0.51-0.52.
+                            # 0.5164 is that distribution's 90th percentile, so the strategy
+                            # trades its most-confident ~10% of (date, symbol) rows rather
+                            # than never trading at all.
   allow_short: false
   execution: next_open

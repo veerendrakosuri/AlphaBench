@@ -105,6 +105,36 @@ def _metrics(net: pd.Series, bench: pd.Series, turnover: pd.Series) -> dict:
     }
 
 
+def threshold_sensitivity(
+    df: pd.DataFrame,
+    proba_col: str = "proba",
+    quantiles: tuple = (0.50, 0.70, 0.80, 0.90, 0.95, 0.97, 0.99),
+    commission_bps: float = 5.0,
+    slippage_bps: float = 5.0,
+) -> pd.DataFrame:
+    """Sweep the position threshold across quantiles of the model's own probability
+    distribution, rather than assuming an absolute probability level is meaningful."""
+    rows = []
+    probs = df[proba_col].dropna()
+    for q in quantiles:
+        thr = float(probs.quantile(q))
+        result = run_backtest(df, proba_col, thr, commission_bps, slippage_bps)
+        m = result["metrics"]
+        rows.append(
+            {
+                "quantile": q,
+                "threshold": thr,
+                "n_trades": int((df[proba_col] > thr).sum()),
+                "trade_pct": float((df[proba_col] > thr).mean()),
+                "sharpe": m["sharpe"],
+                "ann_return": m["ann_return"],
+                "hit_rate": m["hit_rate"],
+                "avg_daily_turnover": m["avg_daily_turnover"],
+            }
+        )
+    return pd.DataFrame(rows)
+
+
 def cost_sensitivity(
     df: pd.DataFrame,
     proba_col: str = "proba",
