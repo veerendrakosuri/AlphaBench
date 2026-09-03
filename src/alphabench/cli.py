@@ -24,6 +24,7 @@ from alphabench.evaluation.robustness import (
     by_period,
 )
 from alphabench.features import pipeline
+from alphabench.models.arima import run_diagnostics_report
 from alphabench.models.baselines import b0_majority, b0_persistence, b1_logistic
 from alphabench.models.ensemble import rank_average_ensemble, score_by_fold
 from alphabench.targets import builder as targets
@@ -628,6 +629,49 @@ def evaluate_holdout_cmd(
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(combined, indent=2))
     console.print(f"\n[green]wrote[/green] {out_path} — holdout is now sealed; do not re-run.")
+
+
+@app.command(name="diagnose-arima")
+def diagnose_arima_cmd(config: str = CONFIG_OPTION) -> None:
+    """ADF/KPSS stationarity tests + ACF/PACF on every symbol's own daily log-return
+    series (never on price levels — PROPOSAL section 4.1's point is that prices are
+    non-stationary and returns are). Justifies the ARIMA order used by B2."""
+    logging_conf.setup_logging()
+    cfg = config_mod.load_config(config)
+    symbols, _benchmark = config_mod.load_universe(cfg.universe["file"])
+
+    panel = Repository(cfg.data.interim_dir).read("panel")
+    report = run_diagnostics_report(panel, symbols)
+
+    console.print(
+        f"ADF stationary: {report['adf_stationary_pct']:.1%}  "
+        f"KPSS stationary: {report['kpss_stationary_pct']:.1%}  "
+        f"both agree: {report['both_agree_stationary_pct']:.1%}  "
+        f"(n={report['n_symbols']} symbols)"
+    )
+
+    reports_dir = Path("reports/metrics")
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    out_path = reports_dir / "arima_diagnostics.json"
+    out_path.write_text(json.dumps(report, indent=2))
+    console.print(f"[green]wrote[/green] {out_path}")
+
+    ap = report["representative_acf_pacf"]
+    if ap is not None:
+        figures_dir = Path("reports/figures")
+        figures_dir.mkdir(parents=True, exist_ok=True)
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
+        lags = range(len(ap["acf"]))
+        ax1.stem(lags, ap["acf"])
+        ax1.set_title(f"ACF — {report['representative_symbol']} daily log returns")
+        ax2.stem(lags, ap["pacf"])
+        ax2.set_title("PACF")
+        ax2.set_xlabel("lag (days)")
+        fig.tight_layout()
+        fig_path = figures_dir / "arima_acf_pacf.png"
+        fig.savefig(fig_path, dpi=150)
+        plt.close(fig)
+        console.print(f"[green]wrote[/green] {fig_path}")
 
 
 if __name__ == "__main__":

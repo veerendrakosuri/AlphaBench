@@ -1,0 +1,58 @@
+[
+  {
+    "model": "B0_persistence",
+    "auc": 0.4874,
+    "accuracy": 0.488,
+    "base_rate": 0.518,
+    "n_folds": 7
+  },
+  {
+    "model": "B0_majority",
+    "auc": 0.5,
+    "accuracy": 0.518,
+    "base_rate": 0.518,
+    "n_folds": 7
+  },
+  {
+    "model": "B1_logistic",
+    "auc": 0.5098,
+    "accuracy": 0.5175,
+    "base_rate": 0.518,
+    "n_folds": 7
+  },
+  {
+    "model": "B2_arima",
+    "auc": 0.503,
+    "accuracy": 0.5106,
+    "base_rate": 0.518,
+    "n_folds": 7
+  },
+  {
+    "model": "M1_lightgbm",
+    "auc": 0.506,
+    "accuracy": 0.5176,
+    "base_rate": 0.518,
+    "n_folds": 7
+  },
+  {
+    "model": "M2_xgboost",
+    "auc": 0.5151,
+    "accuracy": 0.518,
+    "base_rate": 0.518,
+    "n_folds": 7
+  },
+  {
+    "model": "M3_lstm",
+    "auc": 0.5152,
+    "accuracy": 0.5181,
+    "base_rate": 0.518,
+    "n_folds": 7
+  },
+  {
+    "model": "M4_ensemble",
+    "auc": 0.514,
+    "accuracy": 0.5083,
+    "base_rate": 0.518,
+    "n_folds": 7
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "features": [
+    "ret_1d",
+    "mom_5d",
+    "vol_21d",
+    "rsi_14",
+    "macd",
+    "vol_z_21",
+    "xs_rank_ret_1d"
+  ],
+  "window": 20,
+  "hidden_size": 16,
+  "max_epochs": 8,
+  "horizon": 1,
+  "cv_mean_auc": 0.5151529942167614
+}

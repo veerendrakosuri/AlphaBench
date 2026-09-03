@@ -52,6 +52,46 @@ def diagnose_symbol(returns: pd.Series) -> dict:
     }
 
 
+def run_diagnostics_report(panel: pd.DataFrame, symbols: list[str]) -> dict:
+    """ADF/KPSS on every symbol's own daily log-return series (never on price levels —
+    the whole point of section 4.1 is that prices are non-stationary and returns are),
+    aggregated into pass rates. Returns per-symbol results plus the ACF/PACF of one
+    representative symbol (the first, alphabetically, for reproducibility) for plotting.
+    """
+    per_symbol: dict[str, dict] = {}
+    for symbol in symbols:
+        close = panel.loc[panel["symbol"] == symbol].sort_values("date")["close"]
+        returns = np.log(close).diff()
+        if returns.dropna().shape[0] < 100:
+            continue
+        per_symbol[symbol] = diagnose_symbol(returns)
+
+    n = len(per_symbol)
+    adf_stationary = sum(1 for d in per_symbol.values() if d["adf"]["stationary_at_5pct"])
+    kpss_stationary = sum(1 for d in per_symbol.values() if d["kpss"]["stationary_at_5pct"])
+    both_agree = sum(
+        1
+        for d in per_symbol.values()
+        if d["adf"]["stationary_at_5pct"] and d["kpss"]["stationary_at_5pct"]
+    )
+
+    rep_symbol = sorted(per_symbol)[0] if per_symbol else None
+    rep_acf_pacf = None
+    if rep_symbol is not None:
+        close = panel.loc[panel["symbol"] == rep_symbol].sort_values("date")["close"]
+        rep_acf_pacf = acf_pacf(np.log(close).diff(), nlags=20)
+
+    return {
+        "n_symbols": n,
+        "adf_stationary_pct": adf_stationary / n if n else None,
+        "kpss_stationary_pct": kpss_stationary / n if n else None,
+        "both_agree_stationary_pct": both_agree / n if n else None,
+        "representative_symbol": rep_symbol,
+        "representative_acf_pacf": rep_acf_pacf,
+        "per_symbol": per_symbol,
+    }
+
+
 def rolling_arima_forecast(
     train_returns: pd.Series,
     known_returns: pd.Series,
