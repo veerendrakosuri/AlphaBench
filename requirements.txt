@@ -50,13 +50,13 @@ rich==15.0.0                 # readable logs and tables
 # OPTIONAL — uncomment as needed
 # =============================================================================
 
-# Deep learning comparison arm (M3 LSTM). ~800 MB installed.
-# The CPU-only wheel is much smaller and entirely sufficient at this data scale:
+# Deep learning comparison arm (M3 LSTM). NOT pip-installable from this file: a plain
+# `torch==2.13.0` off PyPI resolves to the (huge) CUDA build. `make setup` and CI both
+# run this as an explicit separate step instead:
 #   pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
-# torch==2.13.0
 
-# Model interpretability (SHAP panel in the dashboard, feature stability analysis)
-# shap==0.52.0
+# Model interpretability (SHAP) lives in requirements-dev.txt — it's used by the
+# `explain` CLI command only, never imported by the deployed API/dashboard.
 
 # Prebuilt technical indicators, if you prefer not to hand-roll them.
 # pandas-ta 0.4.71b0 is verified working on NumPy 2.x, but it is a BETA release.

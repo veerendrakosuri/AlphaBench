@@ -3,8 +3,72 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 from scipy import stats
+from sklearn.metrics import roc_auc_score
 
 TRADING_DAYS = 252
+
+
+def block_bootstrap_auc(
+    y_true: np.ndarray,
+    proba: np.ndarray,
+    dates: pd.Series,
+    block: int = 21,
+    n_boot: int = 2000,
+    seed: int = 42,
+) -> dict:
+    """Bootstrap 95% CI for ROC-AUC using contiguous date-blocks, resampled the same
+    way as `block_bootstrap_sharpe` — preserves the serial correlation an iid bootstrap
+    would destroy. Used for the sealed holdout's SC-4 requirement (AUC + bootstrap CI).
+    """
+    rng = np.random.default_rng(seed)
+    order = np.argsort(np.asarray(dates))
+    y = np.asarray(y_true)[order]
+    p = np.asarray(proba)[order]
+    n = len(y)
+
+    n_blocks = int(np.ceil(n / block))
+    out = []
+    for _ in range(n_boot):
+        starts = rng.integers(0, max(n - block, 1), n_blocks)
+        idx = np.concatenate([np.arange(s, s + block) for s in starts])[:n]
+        idx = np.clip(idx, 0, n - 1)
+        y_s, p_s = y[idx], p[idx]
+        if len(np.unique(y_s)) < 2:
+            continue
+        out.append(roc_auc_score(y_s, p_s))
+    out_arr = np.array(out)
+    obs = float(roc_auc_score(y, p))
+    return {
+        "auc": obs,
+        "ci_lower": float(np.percentile(out_arr, 2.5)),
+        "ci_upper": float(np.percentile(out_arr, 97.5)),
+        "n_boot_used": len(out_arr),
+    }
+
+
+def by_ticker(trades: pd.DataFrame, symbol_col: str = "symbol") -> pd.DataFrame:
+    """Per-ticker breakdown, mirroring `by_period` but grouped by symbol. Reveals a
+    strategy whose entire return is carried by a handful of names rather than
+    generalising across the universe (PROPOSAL section 7.3)."""
+    rows = []
+    for symbol, g in trades.groupby(symbol_col):
+        r = g.sort_values("date")["net_ret"]
+        sd = r.std()
+        rows.append(
+            {
+                "symbol": symbol,
+                "ann_return": float((1 + r).prod() ** (TRADING_DAYS / len(r)) - 1)
+                if len(r)
+                else 0.0,
+                "sharpe": float(r.mean() / sd * np.sqrt(TRADING_DAYS)) if sd > 0 else 0.0,
+                "hit_rate": float((r[r != 0] > 0).mean()) if (r != 0).any() else 0.0,
+                "n_days": len(r),
+                "n_trades": int((g["position"] != g["prev_position"]).sum())
+                if "position" in g and "prev_position" in g
+                else int((r != 0).sum()),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("sharpe", ascending=False).reset_index(drop=True)
 
 
 def block_bootstrap_sharpe(

@@ -18,11 +18,19 @@ from alphabench import logging_conf
 from alphabench.data import ingest
 from alphabench.data.repository import Repository
 from alphabench.evaluation.backtest import cost_sensitivity, run_backtest, threshold_sensitivity
-from alphabench.evaluation.robustness import block_bootstrap_sharpe, by_period
+from alphabench.evaluation.robustness import (
+    block_bootstrap_auc,
+    block_bootstrap_sharpe,
+    by_period,
+)
 from alphabench.features import pipeline
 from alphabench.models.baselines import b0_majority, b0_persistence, b1_logistic
+from alphabench.models.ensemble import rank_average_ensemble, score_by_fold
 from alphabench.targets import builder as targets
 from alphabench.training.train import _feature_cols, train_walkforward
+from alphabench.training.train_arima import train_arima_walkforward
+from alphabench.training.train_lstm import train_lstm_walkforward
+from alphabench.training.train_xgboost import train_xgboost_walkforward
 from alphabench.training.tune import tune as tune_fn
 from alphabench.validation.leakage import assert_no_feature_leak
 from alphabench.validation.splitters import WalkForwardSplit
@@ -46,14 +54,18 @@ def _print_report(report: dict) -> None:
             console.print(f"  - {warning}")
 
 
+CONFIG_OPTION = typer.Option("config/config.yaml", "--config", help="Path to a config YAML file")
+
+
 @app.command(name="ingest")
 def ingest_cmd(
     universe: str = typer.Option(..., "--universe", help="Path to a universe YAML file"),
     incremental: bool = typer.Option(False, "--incremental", help="Only fetch new bars"),
+    config: str = CONFIG_OPTION,
 ) -> None:
     """Fetch OHLCV data for a universe and cache it to data/raw."""
     logging_conf.setup_logging()
-    cfg = config_mod.load_config()
+    cfg = config_mod.load_config(config)
     panel = ingest.run_ingest(cfg, universe_file=universe, incremental=incremental)
     console.print(
         f"[green]ingested[/green] {len(panel)} rows for {panel['symbol'].nunique()} symbols"
@@ -61,19 +73,19 @@ def ingest_cmd(
 
 
 @app.command()
-def validate() -> None:
+def validate(config: str = CONFIG_OPTION) -> None:
     """Validate the raw OHLCV cache and write the adjusted panel to data/interim."""
     logging_conf.setup_logging()
-    cfg = config_mod.load_config()
+    cfg = config_mod.load_config(config)
     report = ingest.run_validate(cfg)
     _print_report(report)
 
 
 @app.command(name="build-features")
-def build_features_cmd() -> None:
+def build_features_cmd(config: str = CONFIG_OPTION) -> None:
     """Build features and targets from the validated panel."""
     logging_conf.setup_logging()
-    cfg = config_mod.load_config()
+    cfg = config_mod.load_config(config)
     _, benchmark = config_mod.load_universe(cfg.universe["file"])
 
     interim = Repository(cfg.data.interim_dir)
@@ -124,17 +136,21 @@ def _prepare_fold_frame(merged: pd.DataFrame, cfg, y_col: str) -> pd.DataFrame:
 
 @app.command(name="train")
 def train_cmd(
-    model: str = typer.Option("lightgbm", "--model", help="Model to train"),
+    model: str = typer.Option("lightgbm", "--model", help="lightgbm | xgboost | arima | lstm"),
     horizon: int = typer.Option(1, "--horizon", help="Target horizon in days"),
+    config: str = CONFIG_OPTION,
+    tag: str = typer.Option(
+        "", "--tag", help="Suffix for output dirs/files, e.g. '_us' for a second universe"
+    ),
 ) -> None:
-    """Train B0/B1 baselines and LightGBM in identical walk-forward folds."""
-    if model != "lightgbm":
+    """Train B0/B1 baselines plus the requested model in identical walk-forward folds."""
+    if model not in {"lightgbm", "xgboost", "arima", "lstm"}:
         raise NotImplementedError(
-            f"model={model!r} is not implemented; only 'lightgbm' is supported"
+            f"model={model!r} is not implemented; choose lightgbm, xgboost, arima or lstm"
         )
 
     logging_conf.setup_logging()
-    cfg = config_mod.load_config()
+    cfg = config_mod.load_config(config)
 
     merged = _load_merged_processed(cfg)
     y_col = f"y_dir_{horizon}d"
@@ -172,6 +188,12 @@ def train_cmd(
     console.print("\n[bold]Baselines (mean across folds)[/bold]")
     console.print(means.to_string())
 
+    reports_dir = Path("reports/metrics")
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    baselines_df.to_json(
+        reports_dir / f"baseline_results_h{horizon}{tag}.json", orient="records", indent=2
+    )
+
     target_col = f"fwd_ret_{horizon}d"
     meta_cols = {"date", "symbol", "open", "high", "low", "close", "volume"} | {
         c for c in df_pre.columns if c.startswith(("y_", "fwd_", "sigma_")) and c != target_col
@@ -180,8 +202,19 @@ def train_cmd(
     assert_no_feature_leak(leak_df, target_col, meta_cols)
     console.print(f"\n[green]pre-flight leak check passed[/green] (target={target_col})")
 
-    console.print("\n[bold]LightGBM walk-forward[/bold]")
-    train_walkforward(merged, horizon, cfg, out_dir=Path(f"models/lightgbm_h{horizon}"))
+    out_dir = Path(f"models/{model}_h{horizon}{tag}")
+    if model == "lightgbm":
+        console.print("\n[bold]LightGBM walk-forward[/bold]")
+        train_walkforward(merged, horizon, cfg, out_dir=out_dir, tag=tag)
+    elif model == "xgboost":
+        console.print("\n[bold]XGBoost walk-forward[/bold]")
+        train_xgboost_walkforward(merged, horizon, cfg, out_dir=out_dir, tag=tag)
+    elif model == "arima":
+        console.print("\n[bold]ARIMA walk-forward[/bold]")
+        train_arima_walkforward(merged, horizon, cfg, out_dir=out_dir, tag=tag)
+    elif model == "lstm":
+        console.print("\n[bold]LSTM walk-forward[/bold]")
+        train_lstm_walkforward(merged, horizon, cfg, out_dir=out_dir, tag=tag)
 
 
 @app.command(name="tune")
@@ -189,15 +222,24 @@ def tune_cmd(
     model: str = typer.Option("lightgbm", "--model", help="Model to tune"),
     horizon: int = typer.Option(1, "--horizon", help="Target horizon in days"),
     trials: int = typer.Option(50, "--trials", help="Number of Optuna trials"),
+    config: str = CONFIG_OPTION,
 ) -> None:
-    """Optuna hyperparameter search inside the walk-forward loop."""
+    """Optuna hyperparameter search inside the walk-forward loop.
+
+    Written to reports/metrics/optuna_study_h{horizon}.json for the record: best params,
+    trial count, and every trial's value (the deflated Sharpe ratio needs the trial count
+    and the spread of trial outcomes to correct for selection bias — see BUILD_PLAN
+    Stage 4.3 / PROPOSAL §7.3). This never re-fits the shipped model on the "best" params
+    found here — tuning is a reporting exercise on top of the frozen run, not a way to
+    quietly improve the headline number after the fact.
+    """
     if model != "lightgbm":
         raise NotImplementedError(
             f"model={model!r} is not implemented; only 'lightgbm' is supported"
         )
 
     logging_conf.setup_logging()
-    cfg = config_mod.load_config()
+    cfg = config_mod.load_config(config)
 
     merged = _load_merged_processed(cfg)
     y_col = f"y_dir_{horizon}d"
@@ -209,27 +251,47 @@ def tune_cmd(
     console.print(f"trials run: {len(study.trials)}")
     console.print(f"best params: {study.best_params}")
 
+    reports_dir = Path("reports/metrics")
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    trial_values = [t.value for t in study.trials if t.value is not None]
+    (reports_dir / f"optuna_study_h{horizon}.json").write_text(
+        json.dumps(
+            {
+                "horizon": horizon,
+                "n_trials": len(study.trials),
+                "best_value": float(study.best_value),
+                "best_params": study.best_params,
+                "trial_values": trial_values,
+                "trial_value_std": float(pd.Series(trial_values).std()),
+            },
+            indent=2,
+        )
+    )
+    console.print(f"[green]wrote[/green] reports/metrics/optuna_study_h{horizon}.json")
+
 
 @app.command(name="backtest")
 def backtest_cmd(
-    model: str = typer.Option("lightgbm", "--model", help="Model to backtest"),
+    model: str = typer.Option(
+        "lightgbm", "--model", help="lightgbm | xgboost | arima | lstm | ensemble"
+    ),
     horizon: int = typer.Option(1, "--horizon", help="Target horizon in days"),
+    config: str = CONFIG_OPTION,
+    tag: str = typer.Option(
+        "", "--tag", help="Suffix for output dirs/files, e.g. '_us' for a second universe"
+    ),
 ) -> None:
     """Cost-aware backtest + robustness checks on out-of-fold predictions."""
-    if model != "lightgbm":
-        raise NotImplementedError(
-            f"model={model!r} is not implemented; only 'lightgbm' is supported"
-        )
-
     logging_conf.setup_logging()
-    cfg = config_mod.load_config()
+    cfg = config_mod.load_config(config)
 
     processed = Repository(cfg.data.processed_dir)
-    oof_name = f"oof_predictions_h{horizon}"
+    model_suffix = "" if model == "lightgbm" else f"_{model}"
+    oof_name = f"oof_predictions{model_suffix}_h{horizon}{tag}"
     if not processed.exists(oof_name):
         raise FileNotFoundError(
             f"{oof_name}.parquet not found in {cfg.data.processed_dir} — "
-            f"run `alphabench train --model lightgbm --horizon {horizon}` first."
+            f"run `alphabench train --model {model} --horizon {horizon}` first."
         )
     oof = processed.read(oof_name)
 
@@ -287,7 +349,16 @@ def backtest_cmd(
         "bootstrap_sharpe": boot,
         "by_period": by_period_records.to_dict(orient="records"),
     }
-    (reports_dir / "backtest_results.json").write_text(json.dumps(combined, indent=2))
+    # Preserve the exact existing filename for the default lightgbm/h=1/untagged run (the
+    # API and dashboard read it by that literal name); any other model/horizon/tag gets
+    # its own file so a second run never clobbers a previously-committed result.
+    is_default_run = model == "lightgbm" and horizon == 1 and not tag
+    results_name = (
+        "backtest_results.json"
+        if is_default_run
+        else f"backtest_results{model_suffix}_h{horizon}{tag}.json"
+    )
+    (reports_dir / results_name).write_text(json.dumps(combined, indent=2))
 
     figures_dir = Path("reports/figures")
     figures_dir.mkdir(parents=True, exist_ok=True)
@@ -300,15 +371,263 @@ def backtest_cmd(
     )
     ax.set_xlabel("Date")
     ax.set_ylabel("Equity (starting at 1.0)")
-    ax.set_title(f"AlphaBench LightGBM h{horizon} — Equity Curve (net of costs)")
+    ax.set_title(f"AlphaBench {model} h{horizon}{tag} — Equity Curve (net of costs)")
     ax.legend()
     fig.tight_layout()
-    fig_path = figures_dir / f"equity_curve_h{horizon}.png"
+    fig_name = (
+        "equity_curve_h1.png"
+        if is_default_run
+        else f"equity_curve{model_suffix}_h{horizon}{tag}.png"
+    )
+    fig_path = figures_dir / fig_name
     fig.savefig(fig_path, dpi=150)
     plt.close(fig)
 
-    console.print(f"\n[green]wrote[/green] {reports_dir / 'backtest_results.json'}")
+    console.print(f"\n[green]wrote[/green] {reports_dir / results_name}")
     console.print(f"[green]wrote[/green] {fig_path}")
+
+
+MODEL_LADDER_ORDER = {
+    "B0_persistence": 0,
+    "B0_majority": 1,
+    "B1_logistic": 2,
+    "B2_arima": 3,
+    "M1_lightgbm": 4,
+    "M2_xgboost": 5,
+    "M3_lstm": 6,
+    "M4_ensemble": 7,
+}
+
+
+@app.command(name="compare-models")
+def compare_models_cmd(
+    horizon: int = typer.Option(1, "--horizon", help="Target horizon in days"),
+    config: str = CONFIG_OPTION,
+    tag: str = typer.Option("", "--tag", help="Suffix matching the --tag used at train time"),
+) -> None:
+    """Assemble the full baseline ladder (B0 first) from each model's already-written
+    walk-forward results, computing the M4 rank-average ensemble along the way. Run this
+    after training whichever subset of {lightgbm, xgboost, arima, lstm} you have."""
+    logging_conf.setup_logging()
+    cfg = config_mod.load_config(config)
+    reports_dir = Path("reports/metrics")
+
+    def _load(name: str) -> pd.DataFrame | None:
+        p = reports_dir / name
+        return pd.read_json(p) if p.exists() else None
+
+    lgbm_name = (
+        "walkforward_results.json"
+        if horizon == 1 and not tag
+        else f"walkforward_results_h{horizon}{tag}.json"
+    )
+    baseline = _load(f"baseline_results_h{horizon}{tag}.json")
+    lgbm = _load(lgbm_name)
+    xgb = _load(f"walkforward_results_xgboost_h{horizon}{tag}.json")
+    arima = _load(f"walkforward_results_arima_h{horizon}{tag}.json")
+    lstm = _load(f"walkforward_results_lstm_h{horizon}{tag}.json")
+
+    def _summary(model_name: str, res: pd.DataFrame) -> dict:
+        return {
+            "model": model_name,
+            "auc": float(res["auc"].mean()),
+            "accuracy": float(res["accuracy"].mean()),
+            "base_rate": float(res["base_rate"].mean()),
+            "n_folds": len(res),
+        }
+
+    rows: list[dict] = []
+    if baseline is not None:
+        for model_name, g in baseline.groupby("model"):
+            rows.append(_summary(model_name, g))
+    if arima is not None and len(arima):
+        rows.append(_summary("B2_arima", arima))
+    if lgbm is not None:
+        rows.append(_summary("M1_lightgbm", lgbm))
+    if xgb is not None:
+        rows.append(_summary("M2_xgboost", xgb))
+    if lstm is not None:
+        rows.append(_summary("M3_lstm", lstm))
+
+    processed = Repository(cfg.data.processed_dir)
+    oof_names = {
+        "lightgbm": f"oof_predictions_h{horizon}{tag}",
+        "xgboost": f"oof_predictions_xgboost_h{horizon}{tag}",
+        "lstm": f"oof_predictions_lstm_h{horizon}{tag}",
+    }
+    available = {k: processed.read(v) for k, v in oof_names.items() if processed.exists(v)}
+    if len(available) >= 2:
+        y_col = f"y_dir_{horizon}d"
+        fwd_ret_col = f"fwd_ret_{horizon}d"
+        ens = rank_average_ensemble(available, y_col, fwd_ret_col)
+        ens_scores = score_by_fold(ens, y_col)
+        ens_scores.to_json(
+            reports_dir / f"walkforward_results_ensemble_h{horizon}{tag}.json",
+            orient="records",
+            indent=2,
+        )
+        rows.append(_summary("M4_ensemble", ens_scores))
+    else:
+        console.print(
+            "[yellow]Skipping M4 ensemble — need at least 2 of "
+            f"{sorted(oof_names)} OOF files, found {sorted(available)}[/yellow]"
+        )
+
+    table = pd.DataFrame(rows)
+    table["_order"] = table["model"].map(MODEL_LADDER_ORDER).fillna(99)
+    table = table.sort_values("_order").drop(columns="_order").reset_index(drop=True)
+    table[["auc", "accuracy", "base_rate"]] = table[["auc", "accuracy", "base_rate"]].round(4)
+
+    console.print("[bold]Model ladder (mean across folds)[/bold]")
+    console.print(table.to_string(index=False))
+
+    out_path = reports_dir / f"model_comparison_h{horizon}{tag}.json"
+    out_path.write_text(json.dumps(table.to_dict(orient="records"), indent=2))
+    console.print(f"\n[green]wrote[/green] {out_path}")
+
+
+@app.command(name="explain")
+def explain_cmd(
+    horizon: int = typer.Option(1, "--horizon", help="Target horizon in days"),
+    config: str = CONFIG_OPTION,
+    sample_size: int = typer.Option(5000, "--sample-size", help="Rows to run SHAP over"),
+) -> None:
+    """SHAP interpretability for the final LightGBM model: global importance, a
+    beeswarm plot, and top-10-feature stability across walk-forward folds."""
+    import joblib
+
+    from alphabench.evaluation.explain import (
+        compute_shap_values,
+        fold_feature_stability,
+        plot_beeswarm,
+        plot_global_importance,
+        top_n_features,
+    )
+
+    logging_conf.setup_logging()
+    cfg = config_mod.load_config(config)
+
+    model_dir = Path(f"models/lightgbm_h{horizon}")
+    metadata = json.loads((model_dir / "metadata.json").read_text())
+    cols = metadata["features"]
+
+    merged = _load_merged_processed(cfg)
+    y_col = f"y_dir_{horizon}d"
+    df_pre = _prepare_fold_frame(merged, cfg, y_col)
+    sample = df_pre.dropna(subset=cols).sample(
+        n=min(sample_size, len(df_pre)), random_state=cfg.seed
+    )
+    X = sample[cols]  # noqa: N806
+
+    final_model = joblib.load(model_dir / "final.joblib")
+    shap_values = compute_shap_values(final_model, X)
+
+    figures_dir = Path("reports/figures")
+    figures_dir.mkdir(parents=True, exist_ok=True)
+    plot_global_importance(shap_values, cols, figures_dir / f"shap_importance_h{horizon}.png")
+    plot_beeswarm(shap_values, X, figures_dir / f"shap_beeswarm_h{horizon}.png")
+    console.print(f"[green]wrote[/green] {figures_dir / f'shap_importance_h{horizon}.png'}")
+    console.print(f"[green]wrote[/green] {figures_dir / f'shap_beeswarm_h{horizon}.png'}")
+
+    fold_top: dict[int, list[str]] = {}
+    for fold_file in sorted(model_dir.glob("fold_*.joblib")):
+        year = int(fold_file.stem.removeprefix("fold_"))
+        fold_model = joblib.load(fold_file)
+        fold_sv = compute_shap_values(fold_model, X)
+        fold_top[year] = top_n_features(fold_sv, cols, n=10)
+
+    stability = fold_feature_stability(fold_top)
+    reports_dir = Path("reports/metrics")
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    out_path = reports_dir / f"shap_fold_stability_h{horizon}.json"
+    out_path.write_text(json.dumps(stability, indent=2))
+    console.print(f"[green]wrote[/green] {out_path}")
+    if stability["mean_jaccard"] is not None:
+        console.print(
+            f"mean pairwise top-10 Jaccard overlap across folds: {stability['mean_jaccard']:.3f}"
+        )
+
+
+@app.command(name="evaluate-holdout")
+def evaluate_holdout_cmd(
+    model: str = typer.Option("lightgbm", "--model", help="Model to evaluate"),
+    horizon: int = typer.Option(1, "--horizon", help="Target horizon in days"),
+    config: str = CONFIG_OPTION,
+) -> None:
+    """Score the sealed holdout period. Run ONCE. Do not tune afterwards.
+
+    Refuses to run if reports/metrics/holdout_results.json already exists — the holdout
+    is single-use by design. The temptation to "just try one more feature" after a
+    disappointing holdout is exactly the failure mode the holdout exists to prevent.
+    """
+    import joblib
+
+    out_path = Path("reports/metrics/holdout_results.json")
+    if out_path.exists():
+        raise SystemExit(
+            "holdout_results.json already exists. The holdout is single-use by design — "
+            "re-running it after seeing results is how backtest overfitting happens. "
+            "Delete the file deliberately if you truly must."
+        )
+
+    logging_conf.setup_logging()
+    cfg = config_mod.load_config(config)
+
+    model_dir = Path(f"models/{model}_h{horizon}")
+    fitted = joblib.load(model_dir / "final.joblib")
+    metadata = json.loads((model_dir / "metadata.json").read_text())
+    cols = metadata["features"]
+
+    merged = _load_merged_processed(cfg)
+    y_col = f"y_dir_{horizon}d"
+    fwd_ret_col = f"fwd_ret_{horizon}d"
+    holdout = merged[merged["date"] >= cfg.validation.holdout_start].dropna(subset=[y_col, *cols])
+    if holdout.empty:
+        raise SystemExit(
+            f"no rows on/after holdout_start={cfg.validation.holdout_start} — "
+            "is data/processed up to date?"
+        )
+
+    proba = fitted.predict_proba(holdout[cols])[:, 1]
+    y_true = holdout[y_col].to_numpy()
+
+    auc_ci = block_bootstrap_auc(y_true, proba, holdout["date"])
+    console.print("[bold]Holdout ROC-AUC[/bold]")
+    console.print(
+        f"AUC={auc_ci['auc']:.4f}  95% CI=[{auc_ci['ci_lower']:.4f}, {auc_ci['ci_upper']:.4f}]"
+    )
+
+    holdout_oof = holdout[["date", "symbol"]].copy()
+    holdout_oof["proba"] = proba
+    holdout_oof[fwd_ret_col] = holdout[fwd_ret_col].to_numpy()
+    # run_backtest expects fwd_ret_1d specifically; alias it for horizons other than 1.
+    if fwd_ret_col != "fwd_ret_1d":
+        holdout_oof["fwd_ret_1d"] = holdout_oof[fwd_ret_col]
+
+    bt = run_backtest(
+        holdout_oof,
+        proba_col="proba",
+        threshold=cfg.backtest.prob_threshold,
+        commission_bps=cfg.backtest.commission_bps,
+        slippage_bps=cfg.backtest.slippage_bps,
+        allow_short=cfg.backtest.allow_short,
+    )
+    console.print("\n[bold]Holdout backtest metrics (net of costs)[/bold]")
+    console.print(
+        pd.DataFrame(bt["metrics"].items(), columns=["metric", "value"]).to_string(index=False)
+    )
+
+    combined = {
+        "model": model,
+        "horizon": horizon,
+        "holdout_start": cfg.validation.holdout_start,
+        "n_rows": len(holdout),
+        "auc": auc_ci,
+        "backtest_metrics": bt["metrics"],
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(combined, indent=2))
+    console.print(f"\n[green]wrote[/green] {out_path} — holdout is now sealed; do not re-run.")
 
 
 if __name__ == "__main__":

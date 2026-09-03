@@ -7,52 +7,48 @@ from pathlib import Path
 import joblib
 import mlflow
 import pandas as pd
-from lightgbm import LGBMClassifier, early_stopping, log_evaluation
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
+from xgboost import XGBClassifier
 
 from alphabench.data.repository import Repository
+from alphabench.training.train import _feature_cols
 from alphabench.validation.splitters import WalkForwardSplit
 
 log = logging.getLogger(__name__)
-META = {"date", "symbol", "open", "high", "low", "close", "volume"}
 
 DEFAULT_PARAMS = dict(
     n_estimators=2000,
     learning_rate=0.02,
-    num_leaves=15,
     max_depth=4,
-    min_child_samples=200,
+    min_child_weight=50,
     subsample=0.7,
-    subsample_freq=1,
     colsample_bytree=0.6,
     reg_alpha=1.0,
     reg_lambda=5.0,
-    verbose=-1,
+    early_stopping_rounds=100,
+    eval_metric="auc",
     n_jobs=-1,
     random_state=42,
 )
-# Deliberately conservative: shallow trees, heavy regularisation, small learning
-# rate. In a 52%-signal regime the default LightGBM settings memorise noise.
+# Same conservative philosophy as LightGBM's DEFAULT_PARAMS: shallow trees, heavy
+# regularisation, small learning rate. XGBoost is the diversification arm in the
+# ensemble (M4), not a bid to beat M1 outright.
 
 
-def _feature_cols(df: pd.DataFrame) -> list[str]:
-    return [c for c in df.columns if c not in META and not c.startswith(("y_", "fwd_", "sigma_"))]
-
-
-def train_walkforward(
+def train_xgboost_walkforward(
     df: pd.DataFrame,
     horizon: int,
     cfg,
     params: dict | None = None,
-    out_dir: Path = Path("models/lightgbm_h1"),
+    out_dir: Path = Path("models/xgboost_h1"),
     tag: str = "",
 ) -> pd.DataFrame:
     params = {**DEFAULT_PARAMS, **(params or {})}
     out_dir.mkdir(parents=True, exist_ok=True)
 
     y_col = f"y_dir_{horizon}d"
-    df = df[df["date"] < cfg.validation.holdout_start]  # holdout is sealed
-    df = df.dropna(subset=[y_col]).reset_index(drop=True)  # drop deadband rows
+    df = df[df["date"] < cfg.validation.holdout_start]
+    df = df.dropna(subset=[y_col]).reset_index(drop=True)
     cols = _feature_cols(df)
 
     sp = WalkForwardSplit(
@@ -69,23 +65,17 @@ def train_walkforward(
     mlflow.set_experiment("alphabench")
     rows = []
     oof_rows = []
-    with mlflow.start_run(run_name=f"lightgbm_h{horizon}"):
+    with mlflow.start_run(run_name=f"xgboost_h{horizon}{tag}"):
         mlflow.log_params({**params, "horizon": horizon, "n_features": len(cols)})
 
         for i, (tr, va) in enumerate(sp.split(df["date"]), 1):
-            Xtr, ytr = df.loc[tr, cols], df.loc[tr, y_col]  # noqa: N806 -- X/y convention
+            Xtr, ytr = df.loc[tr, cols], df.loc[tr, y_col]  # noqa: N806
             Xva, yva = df.loc[va, cols], df.loc[va, y_col]  # noqa: N806
             year = df.loc[va, "date"].dt.year.iloc[0]
 
-            model = LGBMClassifier(**params)
-            model.fit(
-                Xtr,
-                ytr,
-                eval_set=[(Xva, yva)],
-                eval_metric="auc",
-                callbacks=[early_stopping(100, verbose=False), log_evaluation(0)],
-            )
-            proba = model.predict_proba(Xva)[:, 1]  # type: ignore[call-overload]
+            model = XGBClassifier(**params)
+            model.fit(Xtr, ytr, eval_set=[(Xva, yva)], verbose=False)
+            proba = model.predict_proba(Xva)[:, 1]
 
             oof_rows.append(
                 pd.DataFrame(
@@ -109,14 +99,14 @@ def train_walkforward(
                 "accuracy": float(accuracy_score(yva, (proba > 0.5).astype(int))),
                 "brier": float(brier_score_loss(yva, proba)),
                 "logloss": float(log_loss(yva, proba)),
-                "best_iter": int(model.best_iteration_ or params["n_estimators"]),
+                "best_iter": int(model.best_iteration or params["n_estimators"]),
             }
             rows.append(m)
             for k, v in m.items():
                 if k != "fold":
                     mlflow.log_metric(f"fold{i}_{k}", v)
             log.info(
-                "fold %d (%d): AUC=%.4f acc=%.4f base=%.4f",
+                "XGBoost fold %d (%d): AUC=%.4f acc=%.4f base=%.4f",
                 i,
                 year,
                 m["auc"],
@@ -130,9 +120,9 @@ def train_walkforward(
         mlflow.log_metric("mean_auc", res["auc"].mean())
         mlflow.log_metric("std_auc", res["auc"].std())
 
-        # Final model: refit on everything before the holdout, using the median
-        # best-iteration from CV so we don't need an eval set.
-        final = LGBMClassifier(**{**params, "n_estimators": int(res["best_iter"].median())})
+        final_params = {**params, "n_estimators": int(res["best_iter"].median())}
+        final_params.pop("early_stopping_rounds", None)
+        final = XGBClassifier(**final_params)
         final.fit(df[cols], df[y_col])
         joblib.dump(final, out_dir / "final.joblib")
 
@@ -152,18 +142,13 @@ def train_walkforward(
         )
 
     oof = pd.concat(oof_rows, ignore_index=True)
-    Repository(cfg.data.processed_dir).write(oof, f"oof_predictions_h{horizon}{tag}")
+    Repository(cfg.data.processed_dir).write(oof, f"oof_predictions_xgboost_h{horizon}{tag}")
 
-    # Preserve the exact existing filename for the default h=1, untagged run (the API and
-    # dashboard read it by that literal name); any other horizon/tag gets its own file so
-    # a second run never clobbers a previously-committed result.
-    results_name = (
-        "walkforward_results.json"
-        if horizon == 1 and not tag
-        else f"walkforward_results_h{horizon}{tag}.json"
+    res.to_json(
+        f"reports/metrics/walkforward_results_xgboost_h{horizon}{tag}.json",
+        orient="records",
+        indent=2,
     )
-    res.to_json(f"reports/metrics/{results_name}", orient="records", indent=2)
     print(res.to_string(index=False))
-    print(f"\nMean AUC {res['auc'].mean():.4f} ± {res['auc'].std():.4f}")
-    print(">>> Compare against 0.5000. Anything above 0.60 warrants a leakage audit.")
+    print(f"\nMean AUC {res['auc'].mean():.4f} +/- {res['auc'].std():.4f}")
     return res
