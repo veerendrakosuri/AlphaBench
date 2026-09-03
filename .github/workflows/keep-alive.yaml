@@ -1,0 +1,17 @@
+name: Keep alive
+
+# Render's free tier sleeps a web service after ~15 min idle, with a 30-60s cold start on
+# the next request. This pings /health periodically during typical waking hours to keep a
+# reviewer's first request fast. Requires the API_URL repository secret to be set once the
+# API is deployed (Stage 10) — until then this workflow runs but its ping is a no-op
+# against an empty URL, which curl -fsS simply fails (harmlessly, via `|| true`).
+on:
+  schedule:
+    - cron: "*/10 6-22 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS "${{ secrets.API_URL }}/health" || true

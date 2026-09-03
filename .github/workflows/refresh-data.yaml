@@ -1,0 +1,35 @@
+name: Nightly data refresh
+
+on:
+  schedule:
+    - cron: "0 23 * * 1-5"      # 23:00 UTC, weekdays (after US close)
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt && pip install -e .
+
+      - name: Incremental ingest, validate, build-features
+        # Fail-soft: yfinance rate-limits/outages must never break the deployed API by
+        # corrupting or blocking the data it serves. A failed refresh leaves the
+        # previously committed data/processed/ untouched.
+        continue-on-error: true
+        run: |
+          python -m alphabench.cli ingest --universe config/universe_in.yaml --incremental
+          python -m alphabench.cli validate
+          python -m alphabench.cli build-features
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: features
+          path: data/processed/
+          retention-days: 7
