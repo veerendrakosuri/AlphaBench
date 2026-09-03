@@ -12,7 +12,10 @@ repos:
       - id: end-of-file-fixer
       - id: check-yaml
       - id: check-added-large-files
-        args: [--maxkb=5000]
+        # 60MB: features.parquet (~46MB) is the binding file. data/processed/** is
+        # committed deliberately (see .gitignore's comment) so the deployed API never
+        # depends on live yfinance; data/raw*/ and data/interim*/ stay fully ignored.
+        args: [--maxkb=60000]
   - repo: local
     hooks:
       - id: no-notebook-output

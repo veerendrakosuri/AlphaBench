@@ -3,13 +3,16 @@ __pycache__/
 *.egg-info/
 *.py[cod]
 .env
-data/**
-!data/**/.gitkeep
-models/**
-!models/.gitkeep
+
+# Raw and interim OHLCV are NEVER committed, for any market (guardrail: provider ToS,
+# repo hygiene) — matches data/raw/, data/interim/, and the _us-suffixed second-market
+# equivalents. Everything downstream (data/processed*/**) IS committed: the API/
+# dashboard Docker build reads it directly rather than depending on live yfinance at
+# deploy time (see README's cache-first architecture note).
+data/raw*/
+data/interim*/
+
 mlruns/
-reports/figures/*
-!reports/figures/.gitkeep
 .ipynb_checkpoints/
 .pytest_cache/
 .ruff_cache/
