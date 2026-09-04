@@ -1,0 +1,14 @@
+{
+  "observed_sharpe": 0.10789639174107872,
+  "n_obs_days": 1729,
+  "n_trials": 50,
+  "trial_auc_std_used_as_trial_sharpe_std": 0.004033628338323071,
+  "note": "n_trials is from the Optuna search over AUC (reports/metrics/optuna_study_h1.json); the SHIPPED model uses DEFAULT_PARAMS, not the tuned best_params, so this corrects the reported Sharpe for the selection effort actually expended during exploration, not for a post-hoc best-of-N backtest Sharpe search.",
+  "deflated_sharpe": {
+    "observed_sharpe_ann": 0.10789639174107872,
+    "null_bar_ann": 0.1457559318916511,
+    "deflated_sharpe_prob": 0.4605141906353827,
+    "n_trials": 50,
+    "is_significant_at_95": false
+  }
+}
