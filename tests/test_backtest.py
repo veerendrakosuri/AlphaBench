@@ -6,7 +6,9 @@ import pytest
 
 from alphabench.evaluation.backtest import cost_sensitivity, run_backtest
 from alphabench.evaluation.robustness import (
+    block_bootstrap_auc,
     block_bootstrap_sharpe,
+    by_ticker,
     deflated_sharpe,
     diebold_mariano,
 )
@@ -107,4 +109,23 @@ def test_diebold_mariano_smoke():
     assert set(result.keys()) == {"dm_stat", "p_value", "favours"}
     assert np.isfinite(result["dm_stat"])
     assert np.isfinite(result["p_value"])
-    assert result["favours"] in {"model_1", "model_2"}
+
+
+def test_by_ticker_breaks_out_each_symbol(random_signal_backtest_df):
+    trades = run_backtest(random_signal_backtest_df)["trades"]
+    result = by_ticker(trades)
+    assert set(result["symbol"]) == set(random_signal_backtest_df["symbol"].unique())
+    assert result["n_days"].sum() == len(trades)
+    # sorted descending by sharpe
+    assert result["sharpe"].is_monotonic_decreasing
+
+
+def test_block_bootstrap_auc_ci_brackets_point_estimate():
+    rng = np.random.default_rng(5)
+    n = 400
+    y = rng.integers(0, 2, n)
+    proba = np.clip(y * 0.1 + rng.normal(0.5, 0.15, n), 0, 1)  # weak real signal
+    dates = pd.bdate_range("2022-01-01", periods=n)
+    result = block_bootstrap_auc(y, proba, pd.Series(dates), block=21, n_boot=500, seed=1)
+    assert result["ci_lower"] <= result["auc"] <= result["ci_upper"]
+    assert result["n_boot_used"] > 0

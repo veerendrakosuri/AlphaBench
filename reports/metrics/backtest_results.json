@@ -170,5 +170,239 @@
       "sharpe": 1.1776072280112244,
       "n_days": 245
     }
+  ],
+  "by_ticker": [
+    {
+      "symbol": "DRREDDY.NS",
+      "ann_return": 0.06960996801153163,
+      "sharpe": 0.6188533293684942,
+      "hit_rate": 0.375,
+      "n_days": 1210,
+      "n_trades": 122
+    },
+    {
+      "symbol": "DIVISLAB.NS",
+      "ann_return": 0.07647497802494452,
+      "sharpe": 0.560409031224057,
+      "hit_rate": 0.3444976076555024,
+      "n_days": 1231,
+      "n_trades": 128
+    },
+    {
+      "symbol": "TCS.NS",
+      "ann_return": 0.02879979375670949,
+      "sharpe": 0.3134369566786734,
+      "hit_rate": 0.37888198757763975,
+      "n_days": 1226,
+      "n_trades": 106
+    },
+    {
+      "symbol": "BAJFINANCE.NS",
+      "ann_return": 0.04430703585407536,
+      "sharpe": 0.3092399899421046,
+      "hit_rate": 0.38922155688622756,
+      "n_days": 1228,
+      "n_trades": 96
+    },
+    {
+      "symbol": "ONGC.NS",
+      "ann_return": 0.038760349559647356,
+      "sharpe": 0.3006126309514953,
+      "hit_rate": 0.37572254335260113,
+      "n_days": 1298,
+      "n_trades": 98
+    },
+    {
+      "symbol": "ITC.NS",
+      "ann_return": 0.027808712282778147,
+      "sharpe": 0.2690072880698826,
+      "hit_rate": 0.3858695652173913,
+      "n_days": 1269,
+      "n_trades": 108
+    },
+    {
+      "symbol": "RELIANCE.NS",
+      "ann_return": 0.028791573269281612,
+      "sharpe": 0.2607173824023974,
+      "hit_rate": 0.4125,
+      "n_days": 1251,
+      "n_trades": 102
+    },
+    {
+      "symbol": "INFY.NS",
+      "ann_return": 0.015137163246792706,
+      "sharpe": 0.1851805215325001,
+      "hit_rate": 0.3837837837837838,
+      "n_days": 1268,
+      "n_trades": 130
+    },
+    {
+      "symbol": "HDFCBANK.NS",
+      "ann_return": 0.015341703453393363,
+      "sharpe": 0.18271914205806553,
+      "hit_rate": 0.4098360655737705,
+      "n_days": 1273,
+      "n_trades": 106
+    },
+    {
+      "symbol": "KOTAKBANK.NS",
+      "ann_return": 0.01083967661434082,
+      "sharpe": 0.14820544925978296,
+      "hit_rate": 0.38271604938271603,
+      "n_days": 1281,
+      "n_trades": 106
+    },
+    {
+      "symbol": "CIPLA.NS",
+      "ann_return": 0.00916673327213191,
+      "sharpe": 0.1350137491290711,
+      "hit_rate": 0.31868131868131866,
+      "n_days": 1210,
+      "n_trades": 120
+    },
+    {
+      "symbol": "JSWSTEEL.NS",
+      "ann_return": -0.003806255781717227,
+      "sharpe": 0.07669028330687627,
+      "hit_rate": 0.40437158469945356,
+      "n_days": 1277,
+      "n_trades": 104
+    },
+    {
+      "symbol": "ADANIPORTS.NS",
+      "ann_return": -0.013394505632394416,
+      "sharpe": 0.038946921470294195,
+      "hit_rate": 0.3953488372093023,
+      "n_days": 1156,
+      "n_trades": 104
+    },
+    {
+      "symbol": "BRITANNIA.NS",
+      "ann_return": -0.007130961863849539,
+      "sharpe": 0.0049995092345108145,
+      "hit_rate": 0.38857142857142857,
+      "n_days": 1213,
+      "n_trades": 122
+    },
+    {
+      "symbol": "ICICIBANK.NS",
+      "ann_return": -0.027138578928184942,
+      "sharpe": -0.04704209567156538,
+      "hit_rate": 0.3756906077348066,
+      "n_days": 1272,
+      "n_trades": 98
+    },
+    {
+      "symbol": "WIPRO.NS",
+      "ann_return": -0.013817423230295,
+      "sharpe": -0.05698496664993278,
+      "hit_rate": 0.3605769230769231,
+      "n_days": 1212,
+      "n_trades": 126
+    },
+    {
+      "symbol": "HCLTECH.NS",
+      "ann_return": -0.01958522487790848,
+      "sharpe": -0.08912252017243937,
+      "hit_rate": 0.3630952380952381,
+      "n_days": 1256,
+      "n_trades": 114
+    },
+    {
+      "symbol": "ULTRACEMCO.NS",
+      "ann_return": -0.029165990022207766,
+      "sharpe": -0.12798635761120086,
+      "hit_rate": 0.3854748603351955,
+      "n_days": 1257,
+      "n_trades": 100
+    },
+    {
+      "symbol": "TITAN.NS",
+      "ann_return": -0.032671785417558996,
+      "sharpe": -0.15483752049842955,
+      "hit_rate": 0.39204545454545453,
+      "n_days": 1191,
+      "n_trades": 110
+    },
+    {
+      "symbol": "LT.NS",
+      "ann_return": -0.033402637782885214,
+      "sharpe": -0.15532986715323432,
+      "hit_rate": 0.3614457831325301,
+      "n_days": 1260,
+      "n_trades": 102
+    },
+    {
+      "symbol": "SBIN.NS",
+      "ann_return": -0.04400577111303605,
+      "sharpe": -0.16439940555435695,
+      "hit_rate": 0.3567567567567568,
+      "n_days": 1233,
+      "n_trades": 108
+    },
+    {
+      "symbol": "HINDUNILVR.NS",
+      "ann_return": -0.025389350803007638,
+      "sharpe": -0.21934439224323274,
+      "hit_rate": 0.3675675675675676,
+      "n_days": 1259,
+      "n_trades": 124
+    },
+    {
+      "symbol": "BPCL.NS",
+      "ann_return": -0.05998010586200209,
+      "sharpe": -0.2206032124903477,
+      "hit_rate": 0.37433155080213903,
+      "n_days": 1292,
+      "n_trades": 120
+    },
+    {
+      "symbol": "AXISBANK.NS",
+      "ann_return": -0.08743153265889259,
+      "sharpe": -0.24508648198409666,
+      "hit_rate": 0.3114754098360656,
+      "n_days": 1278,
+      "n_trades": 112
+    },
+    {
+      "symbol": "SUNPHARMA.NS",
+      "ann_return": -0.0529051521546966,
+      "sharpe": -0.3064548442472805,
+      "hit_rate": 0.34615384615384615,
+      "n_days": 1276,
+      "n_trades": 144
+    },
+    {
+      "symbol": "MARUTI.NS",
+      "ann_return": -0.07015093863899002,
+      "sharpe": -0.30916561570113643,
+      "hit_rate": 0.3388888888888889,
+      "n_days": 1235,
+      "n_trades": 100
+    },
+    {
+      "symbol": "NESTLEIND.NS",
+      "ann_return": -0.04287773615190027,
+      "sharpe": -0.3448668780767067,
+      "hit_rate": 0.31952662721893493,
+      "n_days": 1245,
+      "n_trades": 114
+    },
+    {
+      "symbol": "BHARTIARTL.NS",
+      "ann_return": -0.07721982638685909,
+      "sharpe": -0.4385154510778207,
+      "hit_rate": 0.3089887640449438,
+      "n_days": 1244,
+      "n_trades": 102
+    },
+    {
+      "symbol": "NTPC.NS",
+      "ann_return": -0.08684728348109694,
+      "sharpe": -0.8023288147070013,
+      "hit_rate": 0.30927835051546393,
+      "n_days": 1271,
+      "n_trades": 108
+    }
   ]
 }

@@ -22,6 +22,7 @@ from alphabench.evaluation.robustness import (
     block_bootstrap_auc,
     block_bootstrap_sharpe,
     by_period,
+    by_ticker,
 )
 from alphabench.features import pipeline
 from alphabench.models.arima import run_diagnostics_report
@@ -313,6 +314,7 @@ def backtest_cmd(
     )
     boot = block_bootstrap_sharpe(result["daily"]["net"])
     period_df = by_period(result["trades"])
+    ticker_df = by_ticker(result["trades"])
 
     console.print("[bold]Backtest metrics[/bold]")
     metrics_df = pd.DataFrame(result["metrics"].items(), columns=["metric", "value"])
@@ -334,6 +336,9 @@ def backtest_cmd(
     console.print("\n[bold]Per-year breakdown[/bold]")
     console.print(period_df.to_string())
 
+    console.print("\n[bold]Per-ticker breakdown[/bold]")
+    console.print(ticker_df.to_string(index=False))
+
     reports_dir = Path("reports/metrics")
     reports_dir.mkdir(parents=True, exist_ok=True)
 
@@ -349,6 +354,7 @@ def backtest_cmd(
         "threshold_sensitivity": threshold_df.to_dict(orient="records"),
         "bootstrap_sharpe": boot,
         "by_period": by_period_records.to_dict(orient="records"),
+        "by_ticker": ticker_df.to_dict(orient="records"),
     }
     # Preserve the exact existing filename for the default lightgbm/h=1/untagged run (the
     # API and dashboard read it by that literal name); any other model/horizon/tag gets
