@@ -34,3 +34,24 @@ def test_large_single_day_move_warns_not_fails(jumpy_panel):
     report = validate_panel(jumpy_panel, strict=True)
     assert report["issues"] == []
     assert any("single-day moves" in w for w in report["warnings"])
+
+
+def test_tiny_float_rounding_at_the_bound_is_not_flagged(clean_panel):
+    """A close/high mismatch at float64 precision (~1e-16 relative) — the kind produced
+    by rescaling OHLC by a corporate-action ratio — must not trip the bounds check."""
+    df = clean_panel.copy()
+    idx = df.index[0]
+    df.loc[idx, "close"] = df.loc[idx, "high"] * (1 + 1e-15)
+    report = validate_panel(df, strict=True)
+    assert report["issues"] == []
+
+
+def test_genuine_bounds_violation_is_still_caught(clean_panel):
+    """A close meaningfully (1%) above high is real bad data, not rounding noise, and
+    must still fail even with the small tolerance for float noise."""
+    df = clean_panel.copy()
+    idx = df.index[0]
+    df.loc[idx, "close"] = df.loc[idx, "high"] * 1.01
+    with pytest.raises(DataQualityError) as exc_info:
+        validate_panel(df, strict=True)
+    assert "outside [low, high]" in str(exc_info.value)

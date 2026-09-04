@@ -32,11 +32,19 @@ def validate_panel(df: pd.DataFrame, *, strict: bool = True) -> dict:
     if bad_hl:
         issues.append(f"{bad_hl} rows with high < low")
 
+    # A small relative tolerance absorbs two benign sources of noise rather than failing
+    # on them: float64 rounding when open/high/low are rescaled by a corporate-action
+    # ratio (adj_close/close), which alone produces ~1e-16 relative "violations" on
+    # dividend-heavy US names; and a still-forming intraday bar for the most recent
+    # trading day, where a live "close" quote can sit a few basis points outside the
+    # day-so-far high/low. 1e-4 (1 bp) is well above both and still far below anything
+    # that would indicate a genuine data problem.
+    rtol = 1e-4
     bad_range = (
-        (df["close"] > df["high"])
-        | (df["close"] < df["low"])
-        | (df["open"] > df["high"])
-        | (df["open"] < df["low"])
+        (df["close"] > df["high"] * (1 + rtol))
+        | (df["close"] < df["low"] * (1 - rtol))
+        | (df["open"] > df["high"] * (1 + rtol))
+        | (df["open"] < df["low"] * (1 - rtol))
     ).sum()
     if bad_range:
         issues.append(f"{bad_range} rows with open/close outside [low, high]")

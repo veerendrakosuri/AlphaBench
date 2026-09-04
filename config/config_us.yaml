@@ -1,0 +1,45 @@
+project:
+  name: alphabench
+  seed: 42
+
+data:
+  start_date: "2010-01-01"
+  end_date: null            # null = today
+  raw_dir: data/raw_us
+  interim_dir: data/interim_us
+  processed_dir: data/processed_us
+
+universe:
+  file: config/universe_us.yaml   # Week 9 generalisation-test market per PROPOSAL.md
+                                   # section 3.1 — identical pipeline, second/independent
+                                   # market, own data directories so the NSE primary
+                                   # artifacts are never touched or overwritten.
+  benchmark: SPY
+
+target:
+  horizons: [1, 5]
+  deadband_kappa: 0.3
+  vol_window: 20
+
+validation:
+  train_start: "2010-01-01"
+  first_val_year: 2017
+  last_val_year: 2023
+  holdout_start: "2025-01-01"   # DO NOT TOUCH UNTIL WEEK 9
+  purge_days: 5
+  embargo_days: 5
+
+backtest:
+  commission_bps: 5.0
+  slippage_bps: 5.0
+  prob_threshold: 0.5385  # 90th percentile of THIS model's own OOF probability
+                          # distribution (0.478-0.606, median 0.533) — the identical
+                          # mechanical rule config.yaml's NSE threshold (0.5164) uses,
+                          # applied to the US model's own distribution. This is a fixed,
+                          # objective selection rule that never looks at backtest P&L, so
+                          # it is not "tuning" in the sense the guardrail means (searching
+                          # for the threshold that maximises Sharpe); it is a necessary
+                          # step because raw probabilities cluster too tightly around 0.5
+                          # for any absolute threshold to be meaningful across models.
+  allow_short: false
+  execution: next_open
