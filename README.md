@@ -56,7 +56,7 @@ confirms the same finding on an independent market:**
 
 | Metric | NSE (primary) | US (generalisation) |
 |---|---|---|
-| Walk-forward ROC-AUC, M1 LightGBM h=1 | 0.506 ± 0.011 | 0.519 ± 0.028 |
+| Walk-forward ROC-AUC, M1 LightGBM h=1 | 0.506 ± 0.020 | 0.519 ± 0.028 |
 | Backtest Sharpe, net of 10 bps | 0.108 | 0.349 |
 | Buy-and-hold Sharpe, same window | 1.80 (NIFTY) | 1.05 (SPY) |
 | Excess Sharpe | −1.69 | −0.70 |
@@ -90,14 +90,14 @@ network access required — see "Why processed data is committed" below). To rep
 full model ladder:
 
 ```bash
-make train-lightgbm  # or: python -m alphabench.cli train --model lightgbm --horizon 1
+make train  # LightGBM h=1, same as `python -m alphabench.cli train --model lightgbm --horizon 1`
 python -m alphabench.cli train --model xgboost --horizon 1
 python -m alphabench.cli train --model arima --horizon 1
 python -m alphabench.cli train --model lstm --horizon 1
 python -m alphabench.cli compare-models --horizon 1
 ```
 
-`make test` runs the full suite (53 tests, including the leakage and splitter tests that
+`make test` runs the full suite (57 tests, including the leakage and splitter tests that
 are the project's actual core); `make lint` runs ruff + mypy.
 
 ## Architecture
@@ -130,7 +130,7 @@ alphabench/
 │   │                            DM test, per-year/per-ticker), SHAP interpretability
 │   ├── api/                     FastAPI service (/health, /predict, /backtest, /metrics)
 │   └── dashboard/                Streamlit dashboard (signal, backtest, validation tabs)
-└── tests/                       53 tests; test_leakage.py and test_splitters-equivalent
+└── tests/                       57 tests; test_leakage.py and test_splitters-equivalent
                                   coverage are the most important files in the repo
 ```
 
