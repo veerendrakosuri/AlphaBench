@@ -111,12 +111,15 @@ def test_health_reflects_synthetic_state(client, api_state):
     assert body["model_loaded"] is True
     assert body["n_symbols"] == api_state["data"]["symbol"].nunique()
     assert body["data_last_updated"] == api_state["data"]["date"].max().date().isoformat()
+    assert body["disclaimer"]
 
 
 def test_tickers_returns_sorted_synthetic_symbols(client, api_state):
     resp = client.get("/tickers")
     assert resp.status_code == 200
-    assert resp.json()["tickers"] == sorted(api_state["data"]["symbol"].unique().tolist())
+    body = resp.json()
+    assert body["tickers"] == sorted(api_state["data"]["symbol"].unique().tolist())
+    assert body["disclaimer"]
 
 
 def test_predict_known_symbol_long_side(client):
@@ -164,6 +167,7 @@ def test_metrics_200_with_walkforward_and_backtest(client, tmp_path, monkeypatch
     assert "walkforward" in body
     assert "backtest" in body
     assert "model" in body
+    assert body["disclaimer"]
 
 
 def test_backtest_unfiltered_covers_full_oof_range(client, api_state):

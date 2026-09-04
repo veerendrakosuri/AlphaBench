@@ -8,7 +8,7 @@ import joblib
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from alphabench.api.schemas import BacktestOut, HealthOut, PredictionOut
+from alphabench.api.schemas import DISCLAIMER, BacktestOut, HealthOut, PredictionOut
 from alphabench.config import load_config
 from alphabench.data.repository import Repository
 
@@ -62,7 +62,7 @@ def tickers():
     df = STATE.get("data")
     if df is None:
         raise HTTPException(503, "data not loaded")
-    return {"tickers": sorted(df["symbol"].unique().tolist())}
+    return {"tickers": sorted(df["symbol"].unique().tolist()), "disclaimer": DISCLAIMER}
 
 
 @app.get("/predict/{symbol}", response_model=PredictionOut)
@@ -103,7 +103,11 @@ def metrics():
     bt = Path("reports/metrics/backtest_results.json")
     if not wf.exists():
         raise HTTPException(404, "no metrics — run training first")
-    out = {"walkforward": json.loads(wf.read_text()), "model": STATE.get("meta", {})}
+    out = {
+        "walkforward": json.loads(wf.read_text()),
+        "model": STATE.get("meta", {}),
+        "disclaimer": DISCLAIMER,
+    }
     if bt.exists():
         out["backtest"] = json.loads(bt.read_text())
     return out

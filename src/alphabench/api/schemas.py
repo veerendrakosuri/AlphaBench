@@ -4,6 +4,8 @@ from datetime import date
 
 from pydantic import BaseModel, Field
 
+DISCLAIMER = "Educational research artifact. Not investment advice. All results are historical simulations with no guarantee of future performance."
+
 
 class PredictionOut(BaseModel):
     symbol: str
@@ -30,3 +32,4 @@ class HealthOut(BaseModel):
     model_loaded: bool
     data_last_updated: date | None
     n_symbols: int
+    disclaimer: str = DISCLAIMER
