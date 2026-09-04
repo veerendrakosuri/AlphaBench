@@ -1,0 +1,30 @@
+{
+  "model": "lightgbm",
+  "horizon": 1,
+  "holdout_start": "2025-01-01",
+  "n_rows": 5128,
+  "auc": {
+    "auc": 0.5046769780640517,
+    "ci_lower": 0.4816634235515964,
+    "ci_upper": 0.526594471525093,
+    "n_boot_used": 2000
+  },
+  "backtest_metrics": {
+    "ann_return": -0.013097108589409046,
+    "ann_vol": 0.022474136039684407,
+    "sharpe": -0.5827636072987374,
+    "sortino": -0.7505708320130671,
+    "max_drawdown": -0.02533208205869175,
+    "calmar": -0.5170166652336129,
+    "hit_rate": 0.359375,
+    "avg_win": 0.0015166815757669397,
+    "avg_loss": -0.000965970451301166,
+    "profit_factor": 0.880794407971422,
+    "avg_daily_turnover": 0.10618632534381243,
+    "n_days": 276,
+    "benchmark_ann_return": 0.10172875485379973,
+    "benchmark_sharpe": 0.726282006429668,
+    "benchmark_max_drawdown": -0.10767192098538303,
+    "excess_sharpe": -1.3090456137284054
+  }
+}
