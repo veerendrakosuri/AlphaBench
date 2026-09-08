@@ -205,11 +205,18 @@ inherited rather than fixed. See PROPOSAL.md section 5.4.
   ~15 minutes idle; the first request after a sleep takes 30-60 seconds to wake the
   container.** A GitHub Actions workflow (`keep-alive.yaml`) pings `/health` every 10
   minutes during typical waking hours to blunt this for anyone reviewing the project live.
-- Dashboard: Streamlit, containerised via `docker/dashboard.Dockerfile`, deployed to a
-  Hugging Face Docker Space. `API_URL` is set as a Space variable pointing at the Render
-  deployment; the disclaimer renders before any other content on load.
+- Dashboard: Streamlit, containerised via `docker/dashboard.Dockerfile`, deployed as a
+  second free Render web service (same free-tier sleep/wake behaviour as the API above).
+  `API_URL` is set as an environment variable pointing at the API deployment; the
+  disclaimer renders before any other content on load. The build plan originally called
+  for a Hugging Face Docker Space here, but Hugging Face now requires a PRO subscription
+  to run Docker Spaces (even on free CPU hardware) and no longer offers a free
+  Streamlit-native SDK — Render keeps both services on the same free, no-subscription
+  footing.
 
-**Live URLs:** _pending — added once deployed (see project status below)._
+**Live URLs:**
+- API: https://alphabench.onrender.com ([health](https://alphabench.onrender.com/health), [docs](https://alphabench.onrender.com/docs))
+- Dashboard: https://alphabench-dashboard.onrender.com
 
 ## Project status
 
