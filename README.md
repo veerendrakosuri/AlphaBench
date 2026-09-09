@@ -97,7 +97,7 @@ python -m alphabench.cli train --model lstm --horizon 1
 python -m alphabench.cli compare-models --horizon 1
 ```
 
-`make test` runs the full suite (57 tests, including the leakage and splitter tests that
+`make test` runs the full suite (60 tests, including the leakage and splitter tests that
 are the project's actual core); `make lint` runs ruff + mypy.
 
 ## Architecture
@@ -131,7 +131,7 @@ alphabench/
 │   │                            DM test, per-year/per-ticker), SHAP interpretability
 │   ├── api/                     FastAPI service (/health, /predict, /backtest, /metrics)
 │   └── dashboard/                Streamlit dashboard (signal, backtest, validation tabs)
-└── tests/                       57 tests; test_leakage.py and test_splitters-equivalent
+└── tests/                       60 tests; test_leakage.py and test_splitters-equivalent
                                   coverage are the most important files in the repo
 ```
 
