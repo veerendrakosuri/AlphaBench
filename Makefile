@@ -1,4 +1,4 @@
-.PHONY: setup data features train backtest api dashboard test lint all clean
+.PHONY: setup data features train backtest api dashboard test lint report all clean
 
 setup:
 	pip install -r requirements.txt -r requirements-dev.txt && pip install -e .
@@ -31,6 +31,9 @@ test:
 
 lint:
 	ruff check src tests && ruff format --check src tests && mypy src
+
+report:
+	python scripts/render_report.py
 
 all: data features train backtest
 

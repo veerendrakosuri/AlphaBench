@@ -84,6 +84,10 @@ directly with $d=0$. The ACF/PACF of a representative symbol
 exploit, which is consistent with B2's AUC landing at 0.503, statistically
 indistinguishable from B0 majority's 0.500.
 
+![ACF and PACF of daily log returns for a representative symbol. Both are flat beyond lag 0
+— there is essentially no linear autocorrelation structure for any ARMA order to
+exploit.](figures/arima_acf_pacf.png)
+
 ### M3 — the LSTM comparison, reported honestly
 
 [`docs/PROPOSAL.md`](../docs/PROPOSAL.md) section 4.2 predicted the LSTM would lose to the
@@ -125,6 +129,10 @@ returns) that at least matches the data-generating process being examined.
 Excess Sharpe: **−1.69**. The strategy does not beat buy-and-hold; it substantially
 underperforms it, both before and after accounting for the benchmark's own larger
 drawdown.
+
+![NSE h=1 equity curve, net of 10 bps, against equal-weight buy-and-hold on the same axes.
+The strategy is the flat line; the benchmark is the one that
+compounds.](figures/equity_curve_h1.png)
 
 ### Cost-sensitivity sweep (NSE)
 
@@ -238,6 +246,10 @@ no-post-hoc-tuning principle as everywhere else in this document.
 Full results: `reports/metrics/walkforward_results_h5.json`,
 `reports/metrics/backtest_results_h5.json`, `reports/figures/equity_curve_h5.png`.
 
+![NSE h=5 equity curve, net of costs, against buy-and-hold. The two lines are visually
+indistinguishable: at the h=1-calibrated threshold the model holds a position almost every
+period, so the "strategy" is effectively buy-and-hold.](figures/equity_curve_h5.png)
+
 ## 4. Week 9 generalisation test — a second, independent market
 
 The identical M1 LightGBM h=1 pipeline (same `DEFAULT_PARAMS`, no retuning) was rerun on
@@ -260,6 +272,10 @@ data-quality profiles, different benchmark dynamics, and no shared tuning is its
 informative — it argues against "this particular NSE universe happened to be unlucky" and
 for "this feature set, at this data scale, does not carry a robust directional signal."
 
+![US h=1 equity curve, net of costs, against equal-weight buy-and-hold. Same shape as the
+NSE result: a strategy that trades, costs money, and trails the benchmark it is measured
+against.](figures/equity_curve_h1_us.png)
+
 ## 5. Interpretability
 
 SHAP (`TreeExplainer`) on the final LightGBM model, 5000-row sample of pre-holdout data
@@ -267,6 +283,13 @@ SHAP (`TreeExplainer`) on the final LightGBM model, 5000-row sample of pre-holdo
 market/momentum-driven — `mkt_ret_5d`, `ret_1d`, `mkt_ret_1d`, `mom_5d`, `mkt_vol_21d` —
 rather than idiosyncratic technical indicators, suggesting whatever the model is picking
 up leans toward broad market beta rather than stock-specific structure.
+
+![Global SHAP feature importance (mean |SHAP|) for the final LightGBM h=1
+model.](figures/shap_importance_h1.png)
+
+![SHAP beeswarm. Note the horizontal scale: individual contributions to the model's output
+are on the order of ±0.01 in probability terms — the model is barely moving off its base
+rate for any feature value.](figures/shap_beeswarm_h1.png)
 
 Top-10-feature stability across the 7 folds' own models
 (`reports/metrics/shap_fold_stability_h1.json`): mean pairwise Jaccard overlap **0.352**.

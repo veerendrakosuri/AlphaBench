@@ -23,6 +23,12 @@ nbconvert==7.16.6             # used by the pre-commit hook that strips outputs
 matplotlib==3.11.1
 seaborn==0.13.2
 
+# ---- report rendering -------------------------------------------------------
+# `make report` converts technical_report.md to PDF. Only the markdown->HTML step
+# needs a library; the HTML->PDF step shells out to headless Chrome, which avoids
+# WeasyPrint's GTK/cairo native dependencies and a full LaTeX install for pandoc.
+markdown==3.10
+
 # ---- interpretability -------------------------------------------------------
 shap==0.52.0
 
