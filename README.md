@@ -226,8 +226,11 @@ inherited rather than fixed. See PROPOSAL.md section 5.4.
 
 ## Project status
 
-This README reflects an in-progress capstone. See `BUILD_PLAN.md`'s "Final checklist
-before you call it done" for the authoritative list of what's complete.
+Complete against BUILD_PLAN.md's "Final checklist before you call it done": full model
+ladder (B0 through M4) scored and committed, both horizons (h=1 and h=5) trained and
+backtested, the sealed holdout evaluated exactly once, Optuna trial count and deflated
+Sharpe recorded, SHAP interpretability, the US generalisation test, CI green on every
+push, and both services deployed and verified live.
 
 ## License
 
