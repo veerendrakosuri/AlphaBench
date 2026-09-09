@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use AlphaBench, please cite it as below."
+title: "AlphaBench: walk-forward equity return forecasting and backtesting"
+abstract: >-
+  A reproducible platform for testing whether supervised models can predict the sign of
+  short-horizon equity returns well enough to beat buy-and-hold after costs. Reports a
+  null result: across a full baseline ladder (persistence through a stacked ensemble),
+  two independent markets, and a sealed single-use holdout, walk-forward ROC-AUC sits at
+  0.49-0.52 and no edge survives realistic transaction costs. The contribution is the
+  validation harness -- expanding-window walk-forward with purge and embargo, structural
+  leakage defences enforced by tests that fail the build, block-bootstrap confidence
+  intervals, and a deflated Sharpe ratio correcting for search effort -- which is what
+  makes the negative result trustworthy rather than merely unsurprising.
+type: software
+authors:
+  - family-names: Kosuri
+    given-names: Veerendra
+license: MIT
+repository-code: "https://github.com/veerendrakosuri/AlphaBench"
+url: "https://alphabench-dashboard.onrender.com"
+version: 1.0.0
+date-released: "2026-09-09"
+keywords:
+  - machine-learning
+  - quantitative-finance
+  - backtesting
+  - time-series
+  - walk-forward-validation
+  - null-result
+  - reproducible-research

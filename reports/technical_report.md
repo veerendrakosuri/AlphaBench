@@ -369,3 +369,45 @@ a martingale difference sequence, and a result indistinguishable from chance, ar
 through a leakage-audited, walk-forward-validated, cost-aware pipeline with honest
 uncertainty bounds throughout, is the credible outcome — not evidence the pipeline is
 broken, and not a result to spin toward a more exciting conclusion than the data supports.
+
+### If I had another month
+
+Section 7 lists what this study could not do. Three of those items are addressable with
+more time rather than with a different research question, and each maps to one limitation
+above.
+
+**Point-in-time constituents, to remove survivorship bias rather than merely disclose
+it.** The universe is today's index members backfilled to 2010, so every firm that
+delisted, was acquired, or went bankrupt over the window is absent. The fix is mechanical
+rather than clever — reconstruct index membership from historical index-review
+announcements and rebuild the panel against membership as it stood on each date. This is
+the item most likely to move a published number, and the direction is predictable: it
+should *lower* the buy-and-hold benchmark, which currently enjoys a survivor-only history.
+Since the headline finding is that the strategy loses to buy-and-hold by 1.69 Sharpe, a
+correctly-constructed benchmark would narrow that gap rather than widen it, and an honest
+revision of this report would have to state by how much. The obstacle is cost, not
+method: point-in-time constituent data is a paid product.
+
+**Intraday or genuinely orthogonal data, to raise the signal ceiling.** Roughly 50
+features derived from daily OHLCV are close to fifty views of one thing — section 5 shows
+this directly, with `ret_1d` and `mom_1d` correlating at 1.000 and top-10 feature
+membership only 35% stable across folds. A fifty-first technical feature would not help.
+Intraday bars, fundamentals and analyst revisions, or news sentiment might. This is the
+item most likely to change the *finding* rather than the measurement — and also the one
+where I would expect to spend the month and still report a null, since the surviving
+edges in the literature are largely not in daily OHLCV.
+
+**A transaction-cost model with market impact.** Costs are currently a flat 5+5 bps per
+side applied uniformly, regardless of order size, name, or day: defensible at the implied
+position sizes, indefensible at scale. A square-root impact model calibrated to each
+name's daily traded volume would make cost a function of the trade rather than a
+constant. That matters more here than it usually would, because section 3's sensitivity
+sweep shows the result crossing from positive to negative Sharpe somewhere between 10 and
+20 bps — the entire finding sits inside the range where the cost assumption is doing the
+work. A per-name impact model would also show whether the strategy dies faster in the
+less liquid half of the universe, which the per-ticker breakdown hints at but cannot
+confirm.
+
+None of the three is a reason to withhold the present result. The holdout was scored once
+and is reported unchanged; each of these would sharpen the confidence around a null
+rather than overturn it.
