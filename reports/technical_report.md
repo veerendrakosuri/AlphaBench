@@ -86,7 +86,8 @@ indistinguishable from B0 majority's 0.500.
 
 ### M3 — the LSTM comparison, reported honestly
 
-PROPOSAL.md section 4.2 predicted the LSTM would lose to the GBM at this data scale — the
+[`docs/PROPOSAL.md`](../docs/PROPOSAL.md) section 4.2 predicted the LSTM would lose to the
+GBM at this data scale — the
 standard, well-supported expectation for ~114k rows of low-SNR tabular-shaped data. It
 did not lose here: M3 (0.515 ± 0.019) came in essentially tied with M2 XGBoost and
 slightly *above* M1 LightGBM (0.506 ± 0.020). Two things are true at once: this is
@@ -187,7 +188,8 @@ noise that occasionally points the right way.
 
 Full table: `reports/metrics/backtest_results.json` (`by_ticker`). Per-symbol Sharpe
 ranges from **+0.62 (DRREDDY.NS)** to **−0.80 (NTPC.NS)**, with roughly half the 29
-symbols positive and half negative. This directly answers PROPOSAL.md section 7.3's
+symbols positive and half negative. This directly answers
+[`docs/PROPOSAL.md`](../docs/PROPOSAL.md) section 7.3's
 question — "does the edge generalise, or is it two names carrying twenty-eight?" — and
 the answer is neither: there is no small subset of names driving the aggregate result:
 the aggregate itself is unremarkable, and the dispersion across names is exactly what you

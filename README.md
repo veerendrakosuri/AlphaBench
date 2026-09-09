@@ -21,7 +21,7 @@ tomorrow's price looks like today's. That result has zero economic content. Alph
 instead predicts direction, on a volatility-scaled deadband, validated with expanding-
 window walk-forward cross-validation (purge + embargo), backtested net of costs against
 buy-and-hold, and reported with bootstrap confidence intervals throughout. See
-`PROPOSAL.md` for the full methodology and rationale.
+[`docs/PROPOSAL.md`](docs/PROPOSAL.md) for the full methodology and rationale.
 
 ## Headline result — read this first
 
@@ -45,8 +45,8 @@ That means **the differences between models are not distinguishable from noise a
 sample size**, and none of them clears a bar that would survive costs. The strategy
 underperforms simply buying and holding the NIFTY 50 over the same period.
 
-This is the expected outcome for a rigorous treatment of this problem (see PROPOSAL.md
-sections 1 and 8.1) — daily equity returns are close to a martingale difference sequence,
+This is the expected outcome for a rigorous treatment of this problem (see
+[`docs/PROPOSAL.md`](docs/PROPOSAL.md) sections 1 and 8.1) — daily equity returns are close to a martingale difference sequence,
 and a ceiling of roughly 53-55% directional accuracy is the realistic best case for *any*
 approach at this data scale. A well-documented null result is treated as a successful
 outcome here, not a failure to hide.
@@ -105,6 +105,7 @@ are the project's actual core); `make lint` runs ruff + mypy.
 ```
 alphabench/
 ├── config/                     master config, US/NSE universes, per-market config files
+├── docs/                       the specification this was built against (see below)
 ├── docker/                     api.Dockerfile, dashboard.Dockerfile
 ├── .github/workflows/          ci.yaml, refresh-data.yaml, keep-alive.yaml
 ├── data/
@@ -202,7 +203,7 @@ level, the impact on directional accuracy is materially smaller than it would be
 long-only return backtest, but it is not zero: any symbol whose long-run drift was
 survivorship-conditioned still contributes to the label distribution the model is trained
 on. Point-in-time constituent data is not available for free, so this limitation is
-inherited rather than fixed. See PROPOSAL.md section 5.4.
+inherited rather than fixed. See [`docs/PROPOSAL.md`](docs/PROPOSAL.md) section 5.4.
 
 ## Deployment
 
@@ -224,9 +225,23 @@ inherited rather than fixed. See PROPOSAL.md section 5.4.
 - API: https://alphabench.onrender.com ([health](https://alphabench.onrender.com/health), [docs](https://alphabench.onrender.com/docs))
 - Dashboard: https://alphabench-dashboard.onrender.com
 
+## Documentation
+
+| Document | What it is |
+|---|---|
+| [`reports/technical_report.md`](reports/technical_report.md) | The results write-up: methodology, the full ladder, per-year/per-ticker breakdowns, cost sensitivity, bootstrap CIs, deflated Sharpe, the holdout, limitations. |
+| [`docs/PROPOSAL.md`](docs/PROPOSAL.md) | The original proposal — problem framing, success criteria, methodology, scope boundaries. |
+| [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) | Stage-by-stage build plan and the final checklist this project was held to. |
+| [`docs/TECH_STACK_AND_STRUCTURE.md`](docs/TECH_STACK_AND_STRUCTURE.md) | Dependency choices and repository layout rationale. |
+
+The three `docs/` files are the specification this was built against, vendored into the
+repo so the claims made throughout the README and report can be checked against the
+requirements they were written to satisfy.
+
 ## Project status
 
-Complete against BUILD_PLAN.md's "Final checklist before you call it done": full model
+Complete against [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md)'s "Final checklist before you
+call it done": full model
 ladder (B0 through M4) scored and committed, both horizons (h=1 and h=5) trained and
 backtested, the sealed holdout evaluated exactly once, Optuna trial count and deflated
 Sharpe recorded, SHAP interpretability, the US generalisation test, CI green on every
