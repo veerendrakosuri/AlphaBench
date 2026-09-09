@@ -1,0 +1,15 @@
+# Line endings are a repo-level guarantee, not a per-developer core.autocrlf setting.
+# Without this, a Windows clone with core.autocrlf=true silently reports every text file
+# as modified (CRLF in the working tree vs LF in the blob), which buries real diffs.
+* text=auto eol=lf
+
+# Binary artifacts: never diff, never munge line endings. Corrupting a .joblib or
+# .parquet by "normalising" it is silent and only shows up at load time.
+*.parquet binary
+*.joblib  binary
+*.pt      binary
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.pdf     binary
+*.ipynb   binary
