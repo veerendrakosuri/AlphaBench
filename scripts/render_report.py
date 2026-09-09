@@ -108,6 +108,29 @@ def split_slides(html: str) -> str:
     return "".join(f'<div class="slide">{p}</div>' for p in parts if p.strip())
 
 
+def normalise_pdf_dates(pdf: Path) -> None:
+    """Pin the embedded /CreationDate and /ModDate to a fixed epoch.
+
+    Chrome stamps the current time into every PDF, so re-rendering unchanged markdown
+    produces different bytes and shows up as a modified 680KB binary in git -- the same
+    class of meaningless churn .gitattributes exists to prevent for text. Verified that
+    timestamps are the *only* non-determinism: two renders are byte-identical once these
+    fields match.
+
+    The replacement is the same byte length as what it replaces, deliberately: a PDF's
+    xref table stores absolute byte offsets, so changing the length would corrupt the file.
+    """
+    raw = pdf.read_bytes()
+    fixed = re.sub(
+        rb"(/(?:CreationDate|ModDate)\s*\(D:)\d{14}",
+        rb"\g<1>19700101000000",
+        raw,
+    )
+    if fixed != raw:
+        assert len(fixed) == len(raw), "date normalisation changed byte length"
+        pdf.write_bytes(fixed)
+
+
 def _display(path: Path) -> str:
     """Repo-relative path for logging, falling back to absolute if outside the repo."""
     try:
@@ -210,6 +233,8 @@ def main() -> int:
     if not args.pdf.exists():
         print(result.stdout, result.stderr, file=sys.stderr)
         raise SystemExit("Chrome did not produce a PDF")
+
+    normalise_pdf_dates(args.pdf)
 
     print(f"wrote {_display(args.pdf)} ({args.pdf.stat().st_size / 1024:.0f} KB)")
     return 0
