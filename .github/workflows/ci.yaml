@@ -25,13 +25,31 @@ jobs:
           pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
 
       - name: ruff check
-        run: ruff check src tests
+        run: ruff check src tests scripts
 
       - name: ruff format --check
-        run: ruff format --check src tests
+        run: ruff format --check src tests scripts
 
       - name: mypy
-        run: mypy src --ignore-missing-imports
+        run: mypy src scripts --ignore-missing-imports
 
       - name: pytest
         run: pytest tests/ -v --tb=short
+
+      # The notebook imports from alphabench and reads data/processed/*.parquet, both of
+      # which are committed -- so it is a genuine integration test of the library's public
+      # surface, and it is the one artifact nothing else exercises. Without this it can
+      # rot silently against a refactor and only be discovered by whoever opens it.
+      #
+      # Cheap enough to be worth it: 24s locally, and it needs no network. Output goes to
+      # a temp directory so the checkout is never modified.
+      #
+      # Deliberately NOT asserting the regenerated figures match the committed ones --
+      # matplotlib renders text differently across platforms, so a Linux runner would
+      # disagree with the Windows-generated PNGs for reasons that say nothing about
+      # correctness. This step checks that the notebook *runs*, not that it is pixel-stable.
+      - name: Execute the EDA notebook
+        run: >-
+          jupyter nbconvert --to notebook --execute
+          notebooks/01_eda_stationarity.ipynb
+          --output-dir "$RUNNER_TEMP"

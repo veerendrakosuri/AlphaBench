@@ -30,7 +30,7 @@ test:
 	pytest tests/ -v
 
 lint:
-	ruff check src tests && ruff format --check src tests && mypy src
+	ruff check src tests scripts && ruff format --check src tests scripts && mypy src scripts
 
 report:
 	python scripts/render_report.py
