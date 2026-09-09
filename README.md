@@ -222,6 +222,15 @@ inherited rather than fixed. See [`docs/PROPOSAL.md`](docs/PROPOSAL.md) section 
 
 ## Deployment
 
+**What `/predict` actually runs.** One model, and only one: the **M1 LightGBM h=1** final
+artifact (`models/lightgbm_h1/final.joblib`) — 47 features, refit on all data from
+2010-02-02 to 2024-12-31, i.e. everything before the sealed holdout. `/backtest` serves the
+matching h=1 out-of-fold predictions. Nothing else in the ladder is served: B2 ARIMA stores
+only coefficients, M3 LSTM has per-fold checkpoints but no final artifact (it was built as a
+comparison arm, not a deployable model), and the h=5 and US-universe models are committed
+for inspection but not wired to any endpoint. So the live signal reflects the primary
+model's null result, not the ensemble or the best-looking row of the ladder.
+
 - API: FastAPI + Uvicorn, containerised via `docker/api.Dockerfile`, deployed to
   [Render](https://render.com)'s free tier. **Render's free web services sleep after
   ~15 minutes idle; the first request after a sleep takes 30-60 seconds to wake the
