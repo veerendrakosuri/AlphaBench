@@ -1,4 +1,4 @@
-"""Render reports/technical_report.md to a self-contained PDF with figures embedded.
+"""Render a markdown document to a self-contained PDF with figures embedded.
 
 Markdown -> styled HTML (images inlined as base64) -> headless Chrome --print-to-pdf.
 
@@ -9,6 +9,10 @@ dashboard. Inlining the images as data URIs means the intermediate HTML has no e
 file references, so Chrome renders it identically regardless of working directory.
 
     python scripts/render_report.py            # -> reports/technical_report.pdf
+    python scripts/render_report.py --slides \\
+        --md reports/viva_deck.md --pdf reports/viva_deck.pdf
+
+`--slides` switches to landscape with one slide per `---` rule and larger type.
 """
 
 from __future__ import annotations
@@ -66,6 +70,51 @@ img { max-width: 100%; height: auto; display: block; margin: 14px auto; }
                    margin-top: 4px; text-align: left; }
 """
 
+# Landscape, one slide per horizontal rule, type sized to be legible from the back of a
+# room rather than to fit the most words on a page.
+SLIDES_CSS = """
+@page { size: A4 landscape; margin: 14mm 16mm; }
+body {
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14pt; line-height: 1.45; color: #16181d;
+}
+.slide { page-break-after: always; min-height: 172mm; }
+.slide:last-child { page-break-after: auto; }
+hr { display: none; }
+h1 { font-size: 30pt; margin: 0 0 6px; color: #10131a; line-height: 1.15; }
+h2 { font-size: 21pt; margin: 0 0 10px; color: #10131a; border-bottom: 2px solid #d8dbe2;
+     padding-bottom: 6px; line-height: 1.25; }
+h3 { font-size: 15pt; margin: 14px 0 6px; }
+p { margin: 8px 0; }
+ul, ol { margin: 8px 0; padding-left: 22px; }
+li { margin: 5px 0; }
+strong { color: #000; }
+code { background: #eef0f4; padding: 1px 5px; border-radius: 3px;
+       font-family: "Cascadia Mono", Consolas, monospace; font-size: 12pt; }
+table { border-collapse: collapse; margin: 12px 0; font-size: 12.5pt; width: 100%; }
+th, td { border: 1px solid #c2c7d0; padding: 6px 10px; text-align: left; }
+th { background: #eef0f4; }
+blockquote { border-left: 4px solid #c9ced8; margin: 10px 0 0; padding: 4px 0 4px 14px;
+             color: #555; font-size: 11.5pt; }
+img { max-width: 100%; max-height: 105mm; height: auto; display: block; margin: 8px auto; }
+.figure { text-align: center; margin: 8px 0; }
+.figure .caption { font-size: 10pt; color: #555; font-style: italic; margin-top: 3px; }
+"""
+
+
+def split_slides(html: str) -> str:
+    """Wrap the content between <hr /> rules in page-breaking .slide divs."""
+    parts = re.split(r"<hr\s*/?>", html)
+    return "".join(f'<div class="slide">{p}</div>' for p in parts if p.strip())
+
+
+def _display(path: Path) -> str:
+    """Repo-relative path for logging, falling back to absolute if outside the repo."""
+    try:
+        return str(path.relative_to(ROOT))
+    except ValueError:
+        return str(path)
+
 
 def find_browser() -> Path:
     for c in CHROME_CANDIDATES:
@@ -107,20 +156,34 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--md", type=Path, default=DEFAULT_MD)
     ap.add_argument("--pdf", type=Path, default=DEFAULT_PDF)
+    ap.add_argument(
+        "--slides",
+        action="store_true",
+        help="landscape slide deck: one slide per '---' rule, larger type",
+    )
     args = ap.parse_args()
+
+    # Resolve so paths given relative to the caller's cwd still work, and so the
+    # relative_to(ROOT) display below can't raise on an outside-the-repo path.
+    args.md = args.md.resolve()
+    args.pdf = args.pdf.resolve()
 
     if not args.md.exists():
         raise SystemExit(f"not found: {args.md}")
 
-    print(f"rendering {args.md.relative_to(ROOT)}")
+    print(f"rendering {_display(args.md)}")
     body = markdown.markdown(
         args.md.read_text(encoding="utf-8"),
         extensions=["tables", "fenced_code", "sane_lists", "attr_list"],
     )
     body = inline_images(body, args.md.parent)
+    if args.slides:
+        body = split_slides(body)
+        print(f"  {body.count('class="slide"')} slide(s)")
     html = (
         "<!doctype html><html><head><meta charset='utf-8'>"
-        f"<title>{args.md.stem}</title><style>{CSS}</style></head>"
+        f"<title>{args.md.stem}</title>"
+        f"<style>{SLIDES_CSS if args.slides else CSS}</style></head>"
         f"<body>{body}</body></html>"
     )
 
@@ -148,7 +211,7 @@ def main() -> int:
         print(result.stdout, result.stderr, file=sys.stderr)
         raise SystemExit("Chrome did not produce a PDF")
 
-    print(f"wrote {args.pdf.relative_to(ROOT)} ({args.pdf.stat().st_size / 1024:.0f} KB)")
+    print(f"wrote {_display(args.pdf)} ({args.pdf.stat().st_size / 1024:.0f} KB)")
     return 0
 
 

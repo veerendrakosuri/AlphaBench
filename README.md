@@ -254,6 +254,7 @@ model's null result, not the ensemble or the best-looking row of the ladder.
 | Document | What it is |
 |---|---|
 | [`reports/technical_report.md`](reports/technical_report.md) | The results write-up: methodology, the full ladder, per-year/per-ticker breakdowns, cost sensitivity, bootstrap CIs, deflated Sharpe, the holdout, limitations. Also as [**PDF**](reports/technical_report.pdf) with all figures embedded — rebuild with `make report`. |
+| [`reports/viva_deck.md`](reports/viva_deck.md) | 13-slide defence deck: problem reframing, methodology, the ladder, holdout, limitations, next steps. Also as [**PDF**](reports/viva_deck.pdf). |
 | [`docs/PROPOSAL.md`](docs/PROPOSAL.md) | The original proposal — problem framing, success criteria, methodology, scope boundaries. |
 | [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) | Stage-by-stage build plan and the final checklist this project was held to. |
 | [`docs/TECH_STACK_AND_STRUCTURE.md`](docs/TECH_STACK_AND_STRUCTURE.md) | Dependency choices and repository layout rationale. |

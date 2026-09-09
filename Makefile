@@ -34,6 +34,7 @@ lint:
 
 report:
 	python scripts/render_report.py
+	python scripts/render_report.py --slides --md reports/viva_deck.md --pdf reports/viva_deck.pdf
 
 all: data features train backtest
 
