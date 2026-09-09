@@ -131,6 +131,7 @@ alphabench/
 │   │                            DM test, per-year/per-ticker), SHAP interpretability
 │   ├── api/                     FastAPI service (/health, /predict, /backtest, /metrics)
 │   └── dashboard/                Streamlit dashboard (signal, backtest, validation tabs)
+├── notebooks/                  EDA only — imports from src, never the reverse
 └── tests/                       60 tests; test_leakage.py and test_splitters-equivalent
                                   coverage are the most important files in the repo
 ```
@@ -247,6 +248,7 @@ inherited rather than fixed. See [`docs/PROPOSAL.md`](docs/PROPOSAL.md) section 
 | [`docs/PROPOSAL.md`](docs/PROPOSAL.md) | The original proposal — problem framing, success criteria, methodology, scope boundaries. |
 | [`docs/BUILD_PLAN.md`](docs/BUILD_PLAN.md) | Stage-by-stage build plan and the final checklist this project was held to. |
 | [`docs/TECH_STACK_AND_STRUCTURE.md`](docs/TECH_STACK_AND_STRUCTURE.md) | Dependency choices and repository layout rationale. |
+| [`notebooks/01_eda_stationarity.ipynb`](notebooks/01_eda_stationarity.ipynb) | EDA: return distributions and fat tails, volatility clustering, ADF/KPSS on prices vs returns, correlation structure, regime timeline, and what each implies for modelling. Outputs are stripped on commit; its figures are saved to `reports/figures/eda_*.png`. |
 
 The three `docs/` files are the specification this was built against, vendored into the
 repo so the claims made throughout the README and report can be checked against the
