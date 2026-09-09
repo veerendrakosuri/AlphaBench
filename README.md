@@ -1,6 +1,12 @@
 # AlphaBench
 
+[![CI](https://github.com/veerendrakosuri/AlphaBench/actions/workflows/ci.yaml/badge.svg)](https://github.com/veerendrakosuri/AlphaBench/actions/workflows/ci.yaml)
+[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 A walk-forward equity return forecasting and backtesting platform.
+
+**[Live API](https://alphabench.onrender.com)** · **[Live dashboard](https://alphabench-dashboard.onrender.com)** — both on Render's free tier, so the first request after an idle period takes 30-60s to wake the container.
 
 > **Disclaimer.** AlphaBench is an academic research and software-engineering artifact.
 > It is **not investment advice**, not a trading product, and must not be used to make
