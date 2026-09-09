@@ -1,4 +1,31 @@
-name: Nightly data refresh
+# Data-availability smoke test -- NOT a mechanism for updating the deployed API's data.
+#
+# This workflow proves the ingest -> validate -> build-features path still works against
+# the live provider (yfinance changes its undocumented endpoints without notice, and this
+# is how we find out). It uploads the result as a 7-day build artifact for inspection and
+# then deliberately throws it away.
+#
+# It does NOT commit data/processed/ back to the repository, so the deployed API keeps
+# serving whatever data was last committed by a human (/health reports that date). That is
+# intentional:
+#
+#   1. Every number in the README, reports/technical_report.md and reports/metrics/ was
+#      computed from the exact data/processed/*.parquet committed alongside them. A bot
+#      replacing that data nightly would break the correspondence between committed
+#      results and committed inputs -- the headline result would stop being reproducible
+#      from this repository's own contents.
+#   2. Fresh data extends the sealed holdout window (>= validation.holdout_start). Anyone
+#      re-running `evaluate-holdout` after an auto-refresh would be scoring a different,
+#      larger holdout than the one scored once and reported -- exactly the reuse the
+#      single-use guard in cli.py exists to prevent.
+#   3. features.parquet is ~46MB of binary with no useful delta compression. Committing it
+#      every weekday would add gigabytes to the repository within a year.
+#   4. The ingest step below is continue-on-error. Auto-committing its output would ship a
+#      partial or malformed ingest straight to production via Render's auto-deploy, with
+#      no human in the loop.
+#
+# To refresh the served data, run the pipeline locally, inspect the result, and commit it.
+name: Nightly data refresh (smoke test)
 
 on:
   schedule:
@@ -19,16 +46,16 @@ jobs:
       - run: pip install -r requirements.txt && pip install -e .
 
       - name: Incremental ingest, validate, build-features
-        # Fail-soft: yfinance rate-limits/outages must never break the deployed API by
-        # corrupting or blocking the data it serves. A failed refresh leaves the
-        # previously committed data/processed/ untouched.
+        # Fail-soft: a provider outage should surface as a failed step to look at, not as
+        # a red repository. The committed data/processed/ is untouched either way.
         continue-on-error: true
         run: |
           python -m alphabench.cli ingest --universe config/universe_in.yaml --incremental
           python -m alphabench.cli validate
           python -m alphabench.cli build-features
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload refreshed data for inspection (discarded after 7 days)
+        uses: actions/upload-artifact@v4
         with:
           name: features
           path: data/processed/

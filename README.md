@@ -151,8 +151,8 @@ flowchart TD
     K --> L[reports/]
     J --> M[FastAPI]
     M --> N[Streamlit dashboard]
-    O[GitHub Actions: CI + nightly refresh] --> B
-    O --> M
+    O[GitHub Actions: CI, keep-alive] --> M
+    P[refresh-data.yaml: smoke test only,<br/>result discarded, never committed] -.-> B
 ```
 
 **Why processed data is committed.** `data/processed/*.parquet` (features, targets, OOF
@@ -162,6 +162,20 @@ downstream stage reads Parquet, never the network" — and that includes the dep
 which never depends on live yfinance availability at build or run time. Raw provider data
 is never committed, both for repo hygiene and because `yfinance` scrapes undocumented
 endpoints and shouldn't be redistributed.
+
+**The served data updates only on commit.** `refresh-data.yaml` runs on a weekday cron,
+but it is a *data-availability smoke test*: it proves the ingest → validate →
+build-features path still works against the live provider (yfinance changes its
+undocumented endpoints without notice), uploads the result as a 7-day build artifact for
+inspection, and throws it away. It deliberately does **not** commit `data/processed/`
+back, so `/health` reports the date of the last human commit rather than last night. That
+is a deliberate trade, for four reasons: every number in this README and the technical
+report was computed from the exact parquet files committed alongside them, and a nightly
+bot replacing those would break that correspondence; fresh data silently enlarges the
+sealed holdout window, which is the reuse the single-use guard exists to prevent;
+`features.parquet` is ~46MB of binary that would add gigabytes a year to the repository;
+and the ingest step is fail-soft, so auto-committing would ship a partial ingest straight
+to production. To refresh what's served, run the pipeline locally, inspect it, and commit.
 
 ## The model ladder (B0 first — a number without its baseline is not a result)
 
