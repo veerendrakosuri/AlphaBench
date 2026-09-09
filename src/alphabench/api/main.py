@@ -46,6 +46,16 @@ app = FastAPI(
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
+@app.get("/")
+def root():
+    return {
+        "name": "AlphaBench API",
+        "docs": "/docs",
+        "endpoints": ["/health", "/tickers", "/predict/{symbol}", "/backtest", "/metrics"],
+        "disclaimer": DISCLAIMER,
+    }
+
+
 @app.get("/health", response_model=HealthOut)
 def health():
     df = STATE.get("data")

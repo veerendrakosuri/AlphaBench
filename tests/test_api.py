@@ -103,6 +103,15 @@ def client(api_state):
     return TestClient(api_main.app)
 
 
+def test_root_lists_endpoints_and_disclaimer(client):
+    resp = client.get("/")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["docs"] == "/docs"
+    assert "/health" in body["endpoints"]
+    assert body["disclaimer"]
+
+
 def test_health_reflects_synthetic_state(client, api_state):
     resp = client.get("/health")
     assert resp.status_code == 200
