@@ -296,6 +296,7 @@ def backtest_cmd(
             f"run `alphabench train --model {model} --horizon {horizon}` first."
         )
     oof = processed.read(oof_name)
+    fwd_ret_col = f"fwd_ret_{horizon}d"
 
     result = run_backtest(
         oof,
@@ -304,17 +305,28 @@ def backtest_cmd(
         commission_bps=cfg.backtest.commission_bps,
         slippage_bps=cfg.backtest.slippage_bps,
         allow_short=cfg.backtest.allow_short,
+        fwd_ret_col=fwd_ret_col,
+        horizon=horizon,
     )
-    cost_df = cost_sensitivity(oof, proba_col="proba", threshold=cfg.backtest.prob_threshold)
+    periods_per_year = result["periods_per_year"]
+    cost_df = cost_sensitivity(
+        oof,
+        proba_col="proba",
+        threshold=cfg.backtest.prob_threshold,
+        fwd_ret_col=fwd_ret_col,
+        horizon=horizon,
+    )
     threshold_df = threshold_sensitivity(
         oof,
         proba_col="proba",
         commission_bps=cfg.backtest.commission_bps,
         slippage_bps=cfg.backtest.slippage_bps,
+        fwd_ret_col=fwd_ret_col,
+        horizon=horizon,
     )
-    boot = block_bootstrap_sharpe(result["daily"]["net"])
-    period_df = by_period(result["trades"])
-    ticker_df = by_ticker(result["trades"])
+    boot = block_bootstrap_sharpe(result["daily"]["net"], periods_per_year=periods_per_year)
+    period_df = by_period(result["trades"], periods_per_year=periods_per_year)
+    ticker_df = by_ticker(result["trades"], periods_per_year=periods_per_year)
 
     console.print("[bold]Backtest metrics[/bold]")
     metrics_df = pd.DataFrame(result["metrics"].items(), columns=["metric", "value"])
@@ -607,9 +619,6 @@ def evaluate_holdout_cmd(
     holdout_oof = holdout[["date", "symbol"]].copy()
     holdout_oof["proba"] = proba
     holdout_oof[fwd_ret_col] = holdout[fwd_ret_col].to_numpy()
-    # run_backtest expects fwd_ret_1d specifically; alias it for horizons other than 1.
-    if fwd_ret_col != "fwd_ret_1d":
-        holdout_oof["fwd_ret_1d"] = holdout_oof[fwd_ret_col]
 
     bt = run_backtest(
         holdout_oof,
@@ -618,6 +627,8 @@ def evaluate_holdout_cmd(
         commission_bps=cfg.backtest.commission_bps,
         slippage_bps=cfg.backtest.slippage_bps,
         allow_short=cfg.backtest.allow_short,
+        fwd_ret_col=fwd_ret_col,
+        horizon=horizon,
     )
     console.print("\n[bold]Holdout backtest metrics (net of costs)[/bold]")
     console.print(

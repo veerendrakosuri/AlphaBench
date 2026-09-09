@@ -186,6 +186,12 @@ presumes structure daily equity returns simply don't have — applying it here w
 smooth curves to noise rather than model anything real, and demonstrating that intuition
 with a run would only have spent compute confirming the obvious.
 
+**h=5 (config.yaml's declared `horizons: [1, 5]`):** M1 LightGBM was trained and
+backtested identically at the 5-day horizon — mean AUC 0.521 ± 0.028, the same
+noise-level result as h=1. See `reports/technical_report.md` section 3 for the full
+h=5 write-up, including a backtest-engine correctness note (h>1 forward-return windows
+overlap and cannot be compounded daily without adjustment — `evaluation/backtest.py`).
+
 ## Survivorship-bias disclosure
 
 The universe is today's 30 constituents, backfilled to 2010. Companies that were

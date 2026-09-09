@@ -129,3 +129,81 @@ def test_block_bootstrap_auc_ci_brackets_point_estimate():
     result = block_bootstrap_auc(y, proba, pd.Series(dates), block=21, n_boot=500, seed=1)
     assert result["ci_lower"] <= result["auc"] <= result["ci_upper"]
     assert result["n_boot_used"] > 0
+
+
+def test_run_backtest_horizon_gt_1_drops_overlapping_windows():
+    """Regression test: an h=5 run once produced an annualised Sharpe above 3 and a
+    >700% single-year return because consecutive rows' fwd_ret_5d windows overlap by
+    4 of 5 days, and compounding them daily multiplies the same underlying days'
+    moves together several times over. At horizon=5, run_backtest must restrict the
+    panel to one shared calendar date every 5 trading days (dates[0], dates[5], ...,
+    the same dates for every symbol) before compounding, and annualise on 252/5
+    periods/year rather than 252."""
+    dates = pd.bdate_range("2021-01-04", periods=10)
+    aaa_rets = [0.10, 0.99, 0.99, 0.99, 0.99, 0.20, 0.99, 0.99, 0.99, 0.99]
+    bbb_rets = [0.05, 0.99, 0.99, 0.99, 0.99, 0.15, 0.99, 0.99, 0.99, 0.99]
+    df = pd.DataFrame(
+        {
+            "date": list(dates) * 2,
+            "symbol": ["AAA"] * 10 + ["BBB"] * 10,
+            "proba": [0.60] * 20,  # always above threshold -> position=1 throughout
+            "fwd_ret_5d": [*aaa_rets, *bbb_rets],
+        }
+    )
+
+    result = run_backtest(
+        df,
+        proba_col="proba",
+        threshold=0.55,
+        commission_bps=0,
+        slippage_bps=0,
+        fwd_ret_col="fwd_ret_5d",
+        horizon=5,
+    )
+    trades = result["trades"]
+
+    # Only dates[0] and dates[5] survive -> 2 rows per symbol, the huge 0.99 filler
+    # values on every other day must never be counted.
+    assert len(trades) == 4
+    aaa = trades[trades["symbol"] == "AAA"].sort_values("date")
+    assert aaa["date"].tolist() == [dates[0], dates[5]]
+    assert aaa["net_ret"].tolist() == pytest.approx([0.10, 0.20])
+
+    assert result["periods_per_year"] == pytest.approx(252 / 5)
+
+    # Portfolio-level net return per surviving period is the equal-weight mean across
+    # symbols: (0.10+0.05)/2, (0.20+0.15)/2. ann_return must compound exactly these two
+    # points at 252/5 periods/year -- not the 10-row overlapping series at 252.
+    expected_net = np.array([0.075, 0.175])
+    expected_ann_return = (1 + expected_net).prod() ** ((252 / 5) / 2) - 1
+    assert result["metrics"]["ann_return"] == pytest.approx(expected_ann_return)
+
+
+def test_run_backtest_horizon_gt_1_synchronises_rebalance_dates_across_symbols():
+    """Regression test for a second, subtler version of the same bug: downsampling
+    each symbol independently (e.g. every 5th row of ITS OWN history) does not
+    synchronise across symbols that start on different dates or have different rows
+    missing -- each symbol then lands on a different subset of calendar dates, and the
+    portfolio-level (date-grouped) series stays almost daily even though every
+    individual symbol's own series is correctly 5x sparser. The whole panel must share
+    one rebalance-date schedule, computed from the full set of calendar dates."""
+    all_dates = pd.bdate_range("2021-01-04", periods=10)
+    # BBB is missing its first row, so a naive per-symbol cumcount() would put BBB's
+    # kept rows on a different phase (offset by 1) than AAA's.
+    aaa = pd.DataFrame({"date": all_dates, "symbol": "AAA", "proba": 0.60, "fwd_ret_5d": 0.01})
+    bbb = pd.DataFrame({"date": all_dates[1:], "symbol": "BBB", "proba": 0.60, "fwd_ret_5d": 0.01})
+    df = pd.concat([aaa, bbb], ignore_index=True)
+
+    result = run_backtest(
+        df,
+        proba_col="proba",
+        threshold=0.55,
+        commission_bps=0,
+        slippage_bps=0,
+        fwd_ret_col="fwd_ret_5d",
+        horizon=5,
+    )
+    # 10 shared calendar dates / horizon 5 -> exactly 2 rebalance dates, for both
+    # symbols -- not close to 10, which is what the unsynchronised per-symbol version
+    # of this fix produced.
+    assert result["trades"]["date"].nunique() == 2

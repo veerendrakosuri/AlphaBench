@@ -46,10 +46,15 @@ def block_bootstrap_auc(
     }
 
 
-def by_ticker(trades: pd.DataFrame, symbol_col: str = "symbol") -> pd.DataFrame:
+def by_ticker(
+    trades: pd.DataFrame, symbol_col: str = "symbol", periods_per_year: float = TRADING_DAYS
+) -> pd.DataFrame:
     """Per-ticker breakdown, mirroring `by_period` but grouped by symbol. Reveals a
     strategy whose entire return is carried by a handful of names rather than
-    generalising across the universe (PROPOSAL section 7.3)."""
+    generalising across the universe (PROPOSAL section 7.3).
+
+    `periods_per_year` must match `trades`' own frequency — see `block_bootstrap_sharpe`.
+    """
     rows = []
     for symbol, g in trades.groupby(symbol_col):
         r = g.sort_values("date")["net_ret"]
@@ -57,10 +62,10 @@ def by_ticker(trades: pd.DataFrame, symbol_col: str = "symbol") -> pd.DataFrame:
         rows.append(
             {
                 "symbol": symbol,
-                "ann_return": float((1 + r).prod() ** (TRADING_DAYS / len(r)) - 1)
+                "ann_return": float((1 + r).prod() ** (periods_per_year / len(r)) - 1)
                 if len(r)
                 else 0.0,
-                "sharpe": float(r.mean() / sd * np.sqrt(TRADING_DAYS)) if sd > 0 else 0.0,
+                "sharpe": float(r.mean() / sd * np.sqrt(periods_per_year)) if sd > 0 else 0.0,
                 "hit_rate": float((r[r != 0] > 0).mean()) if (r != 0).any() else 0.0,
                 "n_days": len(r),
                 "n_trades": int((g["position"] != g["prev_position"]).sum())
@@ -72,10 +77,19 @@ def by_ticker(trades: pd.DataFrame, symbol_col: str = "symbol") -> pd.DataFrame:
 
 
 def block_bootstrap_sharpe(
-    returns: pd.Series, block: int = 21, n_boot: int = 2000, seed: int = 42
+    returns: pd.Series,
+    block: int = 21,
+    n_boot: int = 2000,
+    seed: int = 42,
+    periods_per_year: float = TRADING_DAYS,
 ) -> dict:
     """Bootstrap CI for Sharpe using contiguous blocks, which preserves the
-    autocorrelation that an iid bootstrap would destroy."""
+    autocorrelation that an iid bootstrap would destroy.
+
+    `periods_per_year` must match the return series' own frequency — TRADING_DAYS
+    (252) for a daily h=1 series, or TRADING_DAYS / horizon for the non-overlapping
+    resampled series `run_backtest` produces at horizon > 1 (see its docstring).
+    """
     rng = np.random.default_rng(seed)
     r = returns.dropna().to_numpy()
     n_blocks = int(np.ceil(len(r) / block))
@@ -84,9 +98,9 @@ def block_bootstrap_sharpe(
         starts = rng.integers(0, max(len(r) - block, 1), n_blocks)
         sample = np.concatenate([r[s : s + block] for s in starts])[: len(r)]
         sd = sample.std()
-        out.append(sample.mean() / sd * np.sqrt(TRADING_DAYS) if sd > 0 else 0.0)
+        out.append(sample.mean() / sd * np.sqrt(periods_per_year) if sd > 0 else 0.0)
     out = np.array(out)  # type: ignore[assignment]
-    obs = r.mean() / r.std() * np.sqrt(TRADING_DAYS) if r.std() > 0 else 0.0
+    obs = r.mean() / r.std() * np.sqrt(periods_per_year) if r.std() > 0 else 0.0
     return {
         "sharpe": float(obs),
         "ci_lower": float(np.percentile(out, 2.5)),
@@ -161,15 +175,20 @@ def diebold_mariano(e1: np.ndarray, e2: np.ndarray, h: int = 1) -> dict:
     }
 
 
-def by_period(trades: pd.DataFrame, freq: str = "YE") -> pd.DataFrame:
-    """Per-year breakdown. Reveals a strategy whose whole return is one event."""
+def by_period(
+    trades: pd.DataFrame, freq: str = "YE", periods_per_year: float = TRADING_DAYS
+) -> pd.DataFrame:
+    """Per-year breakdown. Reveals a strategy whose whole return is one event.
+
+    `periods_per_year` must match `trades`' own frequency — see `block_bootstrap_sharpe`.
+    """
     daily = trades.groupby("date")["net_ret"].mean()
     g = daily.groupby(pd.Grouper(freq=freq))
     return pd.DataFrame(
         {
             "ann_return": g.apply(lambda r: (1 + r).prod() - 1),
             "sharpe": g.apply(
-                lambda r: r.mean() / r.std() * np.sqrt(TRADING_DAYS) if r.std() > 0 else 0.0
+                lambda r: r.mean() / r.std() * np.sqrt(periods_per_year) if r.std() > 0 else 0.0
             ),
             "n_days": g.size(),
         }

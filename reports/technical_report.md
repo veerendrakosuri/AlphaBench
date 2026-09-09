@@ -194,6 +194,48 @@ the aggregate itself is unremarkable, and the dispersion across names is exactly
 would expect from independent noise around a near-zero mean, not a real cross-sectional
 signal that happens to concentrate somewhere.
 
+### h=5 horizon
+
+`config.yaml` declares `horizons: [1, 5]`; h=1 is the primary result reported throughout
+this document, and h=5 (5-day-ahead direction, same LightGBM architecture and
+hyperparameters, same walk-forward folds) was trained and backtested identically for
+completeness.
+
+Walk-forward: mean AUC 0.5210 ± 0.0283 across 7 folds — the same noise-level result as h=1
+(0.506 ± 0.020), if anything slightly noisier fold-to-fold.
+
+**Backtest engine note.** An h-day forward return makes consecutive rows' realised-return
+windows overlap by h−1 days; compounding overlapping windows at daily frequency multiplies
+the same underlying days' moves together several times over. `run_backtest` therefore
+restricts h>1 backtests to one shared, portfolio-wide rebalance date every h trading days
+before compounding — every symbol on the same dates, not each independently, which does
+not synchronise across symbols with different start dates. This was caught during
+development precisely because getting it wrong first produced an "annualised Sharpe of 3"
+and a ">700% single year", both obviously fabricated for a daily-equity long/flat
+strategy; the fix and both regression tests guarding it are in `evaluation/backtest.py`
+and `tests/test_backtest.py`.
+
+With that fix, and NSE's h=1-calibrated `prob_threshold` (0.5164) applied unchanged to h=5
+(consistent with "no tuning" — recalibrating it to h=5's own probability distribution
+specifically for this run would itself be a form of post-hoc tuning):
+
+| Metric | Strategy (h=5) | Buy-and-hold |
+|---|---|---|
+| Sharpe (annualised) | 1.485 | 1.486 |
+| Ann. return | 28.8% | 28.9% |
+| Excess Sharpe | **−0.001** | — |
+
+The strategy is statistically indistinguishable from buy-and-hold at this threshold — not
+because it found the same edge, but because the h=1-calibrated threshold is low relative
+to h=5's own probability distribution, so the model is long almost every period.
+`threshold_sensitivity` in `reports/metrics/backtest_results_h5.json` shows more
+differentiated (and still unremarkable) behaviour at higher quantile thresholds; this is
+reported as-is rather than re-thresholded to look more interesting, per the same
+no-post-hoc-tuning principle as everywhere else in this document.
+
+Full results: `reports/metrics/walkforward_results_h5.json`,
+`reports/metrics/backtest_results_h5.json`, `reports/figures/equity_curve_h5.png`.
+
 ## 4. Week 9 generalisation test — a second, independent market
 
 The identical M1 LightGBM h=1 pipeline (same `DEFAULT_PARAMS`, no retuning) was rerun on
