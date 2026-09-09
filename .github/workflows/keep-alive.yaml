@@ -1,10 +1,21 @@
 name: Keep alive
 
-# Render's free tier sleeps a web service after ~15 min idle, with a 30-60s cold start on
-# the next request. This pings /health periodically during typical waking hours to keep a
-# reviewer's first request fast. Requires the API_URL repository secret to be set once the
-# API is deployed (Stage 10) — until then this workflow runs but its ping is a no-op
-# against an empty URL, which curl -fsS simply fails (harmlessly, via `|| true`).
+# Render's free tier sleeps a web service after ~15 min idle, and the next request then
+# pays the cold start. Measured on the dashboard: 22.7s from asleep, 0.2s once warm.
+#
+# The API and the dashboard are separate Render services that sleep independently, so
+# both are pinged. A reviewer opening the README is at least as likely to click the
+# dashboard link first, and a 30-60s white screen reads as "broken", not as "free tier".
+#
+# Pings are deliberately fail-soft: a service that is asleep, redeploying, or rate-limited
+# is not a defect in this repo and should not paint a red X on an innocent commit. But a
+# permanently dead URL should not hide behind a green tick either, so each response code
+# goes to the run summary -- green means "the pings ran", and the summary says what they
+# actually got back.
+#
+# API_URL is a repository secret, set once the API was deployed. DASHBOARD_URL falls back
+# to the published URL so no second secret is required; set the secret to override it.
+
 on:
   schedule:
     - cron: "*/10 6-22 * * *"
@@ -14,4 +25,29 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - run: curl -fsS "${{ secrets.API_URL }}/health" || true
+      - name: Ping both services
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          DASHBOARD_URL: ${{ secrets.DASHBOARD_URL || 'https://alphabench-dashboard.onrender.com' }}
+        run: |
+          {
+            echo "| Service | HTTP | Seconds |"
+            echo "|---|---|---|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          ping_one() {
+            name=$1
+            url=$2
+            # No -f: curl then exits 0 on a 4xx/5xx and still reports the real status, so
+            # a 502 from a booting service shows up instead of being swallowed. Only a
+            # genuine connection failure exits non-zero, and reports http_code 000.
+            # --max-time 90 rather than the default (none): a cold start can take a
+            # minute, but a hung TLS handshake should not pin a runner indefinitely.
+            out=$(curl -sS -o /dev/null -w "%{http_code} %{time_total}" --max-time 90 "$url" || true)
+            out=${out:-"000 0"}
+            echo "| $name | ${out%% *} | ${out##* }s |" >> "$GITHUB_STEP_SUMMARY"
+            echo "$name -> $out"
+          }
+
+          ping_one API "${API_URL}/health"
+          ping_one Dashboard "${DASHBOARD_URL}/_stcore/health"

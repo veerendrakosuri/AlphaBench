@@ -234,10 +234,17 @@ model's null result, not the ensemble or the best-looking row of the ladder.
 - API: FastAPI + Uvicorn, containerised via `docker/api.Dockerfile`, deployed to
   [Render](https://render.com)'s free tier. **Render's free web services sleep after
   ~15 minutes idle; the first request after a sleep takes 30-60 seconds to wake the
-  container.** A GitHub Actions workflow (`keep-alive.yaml`) pings `/health` every 10
-  minutes during typical waking hours to blunt this for anyone reviewing the project live.
+  container.** A GitHub Actions workflow (`keep-alive.yaml`) pings the API's `/health` and
+  the dashboard's `/_stcore/health` every 10 minutes during typical waking hours to blunt
+  this for anyone reviewing the project live. The two are separate Render services that
+  sleep independently, so both are pinged; the workflow writes each response code to its
+  run summary, so a dead URL is visible rather than hidden behind a green tick. Scheduled
+  GitHub Actions runs are best-effort and can drift several minutes late, and they are
+  disabled automatically after 60 days without a push — so treat the pings as a courtesy,
+  not a guarantee.
 - Dashboard: Streamlit, containerised via `docker/dashboard.Dockerfile`, deployed as a
-  second free Render web service (same free-tier sleep/wake behaviour as the API above).
+  second free Render web service (same free-tier sleep/wake behaviour as the API above,
+  and kept warm by the same workflow).
   `API_URL` is set as an environment variable pointing at the API deployment; the
   disclaimer renders before any other content on load. The build plan originally called
   for a Hugging Face Docker Space here, but Hugging Face now requires a PRO subscription
