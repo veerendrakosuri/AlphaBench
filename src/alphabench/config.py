@@ -61,3 +61,16 @@ def load_universe(path: str | Path) -> tuple[list[str], str]:
     with open(ROOT / path) as f:
         u = yaml.safe_load(f)
     return [t["symbol"] for t in u["tickers"]], u["benchmark"]
+
+
+def load_model_params(model: str) -> dict:
+    """Load a model's hyperparameters from config/models/<model>.yaml.
+
+    The YAML is the single source of truth for a model's DEFAULT_PARAMS — the training
+    module for `model` reads it at import time rather than hardcoding a literal dict, so
+    the two cannot silently drift apart. tests/test_model_params_config.py additionally
+    asserts these values equal what the already-trained model's metadata.json recorded,
+    so this file documents what was actually trained rather than a live tuning knob.
+    """
+    with open(ROOT / "config" / "models" / f"{model}.yaml") as f:
+        return yaml.safe_load(f)

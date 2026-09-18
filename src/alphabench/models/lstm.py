@@ -5,10 +5,16 @@ import pandas as pd
 import torch
 from torch import nn
 
-# A small, deliberately narrow feature subset — the point of M3 is a like-for-like
-# sequence-model comparison arm, not a second attempt to beat M1 on features.
-LSTM_FEATURES = ["ret_1d", "mom_5d", "vol_21d", "rsi_14", "macd", "vol_z_21", "xs_rank_ret_1d"]
-WINDOW = 20
+from alphabench.config import load_model_params
+
+# config/models/lstm.yaml is the source of truth for the feature subset, window, and
+# training hyperparameters below; see its header comment and
+# tests/test_model_params_config.py for the guarantee that this matches what was
+# actually trained. A small, deliberately narrow feature subset — the point of M3 is a
+# like-for-like sequence-model comparison arm, not a second attempt to beat M1 on features.
+LSTM_PARAMS = load_model_params("lstm")
+LSTM_FEATURES = LSTM_PARAMS["features"]
+WINDOW = LSTM_PARAMS["window"]
 
 
 class SmallLSTM(nn.Module):

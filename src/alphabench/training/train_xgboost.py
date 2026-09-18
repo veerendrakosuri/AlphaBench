@@ -10,29 +10,17 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 from xgboost import XGBClassifier
 
+from alphabench.config import load_model_params
 from alphabench.data.repository import Repository
 from alphabench.training.train import _feature_cols
 from alphabench.validation.splitters import WalkForwardSplit
 
 log = logging.getLogger(__name__)
 
-DEFAULT_PARAMS = dict(
-    n_estimators=2000,
-    learning_rate=0.02,
-    max_depth=4,
-    min_child_weight=50,
-    subsample=0.7,
-    colsample_bytree=0.6,
-    reg_alpha=1.0,
-    reg_lambda=5.0,
-    early_stopping_rounds=100,
-    eval_metric="auc",
-    n_jobs=-1,
-    random_state=42,
-)
-# Same conservative philosophy as LightGBM's DEFAULT_PARAMS: shallow trees, heavy
-# regularisation, small learning rate. XGBoost is the diversification arm in the
-# ensemble (M4), not a bid to beat M1 outright.
+# config/models/xgboost.yaml is the source of truth; see its header comment and
+# tests/test_model_params_config.py for the guarantee that this matches what was
+# actually trained.
+DEFAULT_PARAMS = load_model_params("xgboost")
 
 
 def train_xgboost_walkforward(

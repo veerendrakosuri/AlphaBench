@@ -10,29 +10,17 @@ import pandas as pd
 from lightgbm import LGBMClassifier, early_stopping, log_evaluation
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, roc_auc_score
 
+from alphabench.config import load_model_params
 from alphabench.data.repository import Repository
 from alphabench.validation.splitters import WalkForwardSplit
 
 log = logging.getLogger(__name__)
 META = {"date", "symbol", "open", "high", "low", "close", "volume"}
 
-DEFAULT_PARAMS = dict(
-    n_estimators=2000,
-    learning_rate=0.02,
-    num_leaves=15,
-    max_depth=4,
-    min_child_samples=200,
-    subsample=0.7,
-    subsample_freq=1,
-    colsample_bytree=0.6,
-    reg_alpha=1.0,
-    reg_lambda=5.0,
-    verbose=-1,
-    n_jobs=-1,
-    random_state=42,
-)
-# Deliberately conservative: shallow trees, heavy regularisation, small learning
-# rate. In a 52%-signal regime the default LightGBM settings memorise noise.
+# config/models/lightgbm.yaml is the source of truth; see its header comment and
+# tests/test_model_params_config.py for the guarantee that this matches what was
+# actually trained.
+DEFAULT_PARAMS = load_model_params("lightgbm")
 
 
 def _feature_cols(df: pd.DataFrame) -> list[str]:

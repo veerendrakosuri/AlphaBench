@@ -1,0 +1,22 @@
+# Hyperparameters for the XGBoost comparison model (M2).
+# Loaded by src/alphabench/training/train_xgboost.py via alphabench.config.load_model_params.
+#
+# Same conservative philosophy as lightgbm.yaml: shallow trees, heavy regularisation,
+# small learning rate. XGBoost is the diversification arm in the ensemble (M4), not a
+# bid to beat M1 outright.
+#
+# These are exactly the values recorded in models/xgboost_h1/metadata.json's "params"
+# field — tests/test_model_params_config.py asserts the two never drift apart. This is
+# documentation of what was trained, not a live tuning knob.
+n_estimators: 2000
+learning_rate: 0.02
+max_depth: 4
+min_child_weight: 50
+subsample: 0.7
+colsample_bytree: 0.6
+reg_alpha: 1.0
+reg_lambda: 5.0
+early_stopping_rounds: 100
+eval_metric: auc
+n_jobs: -1
+random_state: 42

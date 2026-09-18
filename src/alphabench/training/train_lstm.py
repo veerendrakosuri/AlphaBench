@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 from torch import nn
 
 from alphabench.data.repository import Repository
-from alphabench.models.lstm import LSTM_FEATURES, WINDOW, SmallLSTM, build_sequences
+from alphabench.models.lstm import LSTM_FEATURES, LSTM_PARAMS, WINDOW, SmallLSTM, build_sequences
 from alphabench.validation.splitters import WalkForwardSplit
 
 log = logging.getLogger(__name__)
@@ -76,10 +76,10 @@ def train_lstm_walkforward(
     tag: str = "",
     feature_cols: list[str] | None = None,
     window: int = WINDOW,
-    hidden_size: int = 16,
-    max_epochs: int = 8,
-    batch_size: int = 256,
-    patience: int = 2,
+    hidden_size: int = LSTM_PARAMS["hidden_size"],
+    max_epochs: int = LSTM_PARAMS["max_epochs"],
+    batch_size: int = LSTM_PARAMS["batch_size"],
+    patience: int = LSTM_PARAMS["patience"],
     dev_frac: float = 0.1,
     seed: int = 42,
 ) -> pd.DataFrame:

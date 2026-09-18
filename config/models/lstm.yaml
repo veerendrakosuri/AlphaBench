@@ -1,0 +1,27 @@
+# Hyperparameters for the LSTM comparison model (M3) — small and CPU-only by design
+# (PROPOSAL section 4.2: expected to lose against the GBMs at this data scale; reported
+# either way, not tuned to catch up).
+# Loaded by src/alphabench/models/lstm.py and src/alphabench/training/train_lstm.py via
+# alphabench.config.load_model_params.
+#
+# `features` is a small, deliberately narrow subset of the full ~50-column feature set —
+# an LSTM's sequence length multiplies its parameter count by the feature count, so this
+# stays small enough to train on CPU in a few minutes per fold.
+#
+# `features`, `window` and `hidden_size` are exactly the values recorded in
+# models/lstm_h1/metadata.json — tests/test_model_params_config.py asserts the two never
+# drift apart. `batch_size` and `patience` are not recorded in metadata.json (they affect
+# training dynamics, not the fitted model's shape) but are the values actually used.
+features:
+  - ret_1d
+  - mom_5d
+  - vol_21d
+  - rsi_14
+  - macd
+  - vol_z_21
+  - xs_rank_ret_1d
+window: 20
+hidden_size: 16
+max_epochs: 8
+batch_size: 256
+patience: 2

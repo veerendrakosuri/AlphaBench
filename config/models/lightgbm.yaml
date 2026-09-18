@@ -1,0 +1,23 @@
+# Hyperparameters for the LightGBM primary model (M1) — the model the API serves.
+# Loaded by src/alphabench/training/train.py via alphabench.config.load_model_params.
+#
+# Deliberately conservative: shallow trees, heavy regularisation, small learning
+# rate. In a 52%-signal regime the default LightGBM settings memorise noise.
+#
+# These are exactly the values recorded in models/lightgbm_h1/metadata.json's "params"
+# field for the model actually shipped — tests/test_model_params_config.py asserts the
+# two never drift apart. This is documentation of what was trained, not a live tuning
+# knob: changing a value here does not retrain the shipped model.
+n_estimators: 2000
+learning_rate: 0.02
+num_leaves: 15
+max_depth: 4
+min_child_samples: 200
+subsample: 0.7
+subsample_freq: 1
+colsample_bytree: 0.6
+reg_alpha: 1.0
+reg_lambda: 5.0
+verbose: -1
+n_jobs: -1
+random_state: 42
