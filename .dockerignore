@@ -2,7 +2,9 @@
 .git/
 __pycache__/
 data/raw/
+data/raw_us/
 data/interim/
+data/interim_us/
 mlruns/
 notebooks/
 tests/

@@ -262,6 +262,13 @@ model's null result, not the ensemble or the best-looking row of the ladder.
 - API: https://alphabench.onrender.com ([health](https://alphabench.onrender.com/health), [docs](https://alphabench.onrender.com/docs))
 - Dashboard: https://alphabench-dashboard.onrender.com
 
+**Container images.** Both services also build and push to [GHCR](https://ghcr.io) on
+every version tag (`.github/workflows/deploy.yaml`), independent of Render's git-push
+deploy — `docker pull ghcr.io/veerendrakosuri/alphabench-api:<tag>` (and
+`alphabench-dashboard`) runs the exact code from that tag anywhere `docker run` works,
+with no dependency on any one PaaS. This workflow was added after `v1.0.0` shipped, so
+that release has no corresponding image; the next tag will.
+
 ## Documentation
 
 | Document | What it is |
