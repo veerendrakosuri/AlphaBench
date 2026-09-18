@@ -107,8 +107,7 @@ alphabench/
 │
 ├── docker/
 │   ├── api.Dockerfile
-│   ├── dashboard.Dockerfile
-│   └── entrypoint.sh
+│   └── dashboard.Dockerfile      # (no entrypoint.sh — see section 2.2)
 │
 ├── .github/workflows/
 │   ├── ci.yaml                     # ruff + mypy + pytest on every push
@@ -285,3 +284,12 @@ formula, lookback, rationale") already exists as prose in PROPOSAL section 4.3, 
 exact feature list used by each trained model is recorded in that model's own
 `metadata.json` — which is the record, the same role `metadata.json` plays for
 hyperparameters per section 2.1.
+
+**No `docker/entrypoint.sh`.** Both Dockerfiles use a shell-form `CMD` directly
+(`CMD ["sh", "-c", "uvicorn ... --port ${PORT:-8000}"]`), which already handles the one
+thing that would justify a separate entrypoint script here: expanding Render's injected
+`$PORT` at container start. Neither image does anything else at startup — no database
+migration, no wait-for-a-dependency step, no signal trapping beyond what `sh -c` already
+gives a single foreground process — so a script would add a layer of indirection with
+nothing for it to do. Confirmed working as committed: both services are live on Render
+built from these exact Dockerfiles.
