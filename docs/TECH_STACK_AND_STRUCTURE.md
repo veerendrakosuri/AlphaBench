@@ -116,7 +116,7 @@ alphabench/
 │
 ├── data/                           # ALL gitignored except .gitkeep files
 │   ├── raw/                        # immutable provider output. NEVER edit in place.
-│   │   └── ohlcv/ticker=AAPL/year=2024/data.parquet
+│   │   └── ohlcv.parquet           # single file, not hive-partitioned — see section 2.2
 │   ├── interim/                    # validated, cleaned panel
 │   │   └── panel.parquet
 │   ├── processed/                  # model-ready features + targets
@@ -320,3 +320,15 @@ only place to see — are likewise independently committed, one JSON per model, 
 `reports/metrics/walkforward_results*.json`. Reproducible without MLflow, in other words,
 was already true of the evidence that matters; only the convenience of MLflow's own UI
 over that same data is what's actually absent.
+
+**`data/raw/ohlcv.parquet` is a single file, not `ohlcv/ticker=AAPL/year=2024/data.parquet`
+hive partitioning.** `Repository.write()` (`data/repository.py`) always writes one
+`<name>.parquet` per dataset via `df.to_parquet(...)`; ingestion calls it once with the
+full multi-ticker panel rather than once per ticker/year. Amending the doc rather than the
+repo here: the primary market's raw OHLCV is 4.5 MB (the US generalisation market's is
+4.1 MB), and partitioning a file that small by ticker and year buys nothing — DuckDB (via
+`Repository.query()`) reads a single parquet file just as efficiently as a partitioned
+dataset at this size, and hive partitioning starts paying for itself at row counts and
+file sizes this project is nowhere near. Repartitioning ~9 MB of raw data to match a plan
+written before the data existed would be reshaping the repo to fit the doc rather than the
+other way around.
