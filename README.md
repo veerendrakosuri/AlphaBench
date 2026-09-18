@@ -103,8 +103,18 @@ python -m alphabench.cli train --model lstm --horizon 1
 python -m alphabench.cli compare-models --horizon 1
 ```
 
-`make test` runs the full suite (60 tests, including the leakage and splitter tests that
+`make test` runs the full suite (64 tests, including the leakage and splitter tests that
 are the project's actual core); `make lint` runs ruff + mypy.
+
+**Experiment tracking.** MLflow is wired into `training/train.py` and
+`training/train_xgboost.py` and logs every walk-forward fold when training runs locally —
+but the local `mlruns/` store is gitignored and not carried in this checkout, the same as
+`.venv/`. The evidence that actually matters is committed independently of it: the Optuna
+trial data the deflated Sharpe correction rests on is in
+[`reports/metrics/optuna_study_h1.json`](reports/metrics/optuna_study_h1.json), and every
+model's per-fold metrics are in their own `reports/metrics/walkforward_results*.json`. See
+[`docs/TECH_STACK_AND_STRUCTURE.md`](docs/TECH_STACK_AND_STRUCTURE.md) section 2.2 for the
+full accounting.
 
 ## Architecture
 
@@ -138,7 +148,7 @@ alphabench/
 │   ├── api/                     FastAPI service (/health, /predict, /backtest, /metrics)
 │   └── dashboard/                Streamlit dashboard (signal, backtest, validation tabs)
 ├── notebooks/                  EDA only — imports from src, never the reverse
-└── tests/                       60 tests; test_leakage.py and test_splitters-equivalent
+└── tests/                       64 tests; test_leakage.py and test_splitters-equivalent
                                   coverage are the most important files in the repo
 ```
 

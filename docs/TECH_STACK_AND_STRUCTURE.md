@@ -293,3 +293,30 @@ migration, no wait-for-a-dependency step, no signal trapping beyond what `sh -c`
 gives a single foreground process — so a script would add a layer of indirection with
 nothing for it to do. Confirmed working as committed: both services are live on Render
 built from these exact Dockerfiles.
+
+**`mlruns/` is empty.** PROPOSAL's R-3 ("log every experiment in MLflow; report deflated
+Sharpe with trial count") is only half satisfied by what ships in this repo, and this
+records which half and why. MLflow genuinely is wired into training
+(`training/train.py` and `training/train_xgboost.py` both call
+`mlflow.start_run`/`log_params`/`log_metric` around every walk-forward fold — see
+`tests/test_models.py::test_train_walkforward_smoke`'s own comment, which `chdir`s into a
+temp directory specifically so the smoke test doesn't write into the real `./mlruns/`,
+confirming the code path is real and was exercised during development). What's missing is
+the local run store itself: `mlruns/` is gitignored, like `.venv/` — a personal,
+machine-local artifact, not something meant to ship — and its contents from whatever
+machine training actually ran on were never carried forward into this checkout. Re-running
+training solely to regenerate it was explicitly out of scope for this reconciliation pass
+(it would touch model artifacts that must stay byte-for-byte what the sealed holdout was
+scored against), so it stays empty rather than being backfilled with a fabricated trail.
+
+The specific claim the second half of R-3 rests on — "report deflated Sharpe with trial
+count" — does not actually depend on MLflow at all, and is fully committed:
+`reports/metrics/optuna_study_h1.json` records the Optuna search's `n_trials` (50),
+`best_value`, `best_params`, and all 50 individual `trial_values`, and
+`reports/metrics/deflated_sharpe_h1.json` cites that file directly in its own `note`
+field as the source its correction is computed from. Every trained model's per-fold
+walk-forward metrics — the thing an MLflow run's own metrics tab would otherwise be the
+only place to see — are likewise independently committed, one JSON per model, under
+`reports/metrics/walkforward_results*.json`. Reproducible without MLflow, in other words,
+was already true of the evidence that matters; only the convenience of MLflow's own UI
+over that same data is what's actually absent.
