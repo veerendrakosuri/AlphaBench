@@ -99,7 +99,7 @@ alphabench/
 │   ├── config.yaml                 # master config: paths, universe, dates, horizon
 │   ├── universe_us.yaml            # 30 US tickers, sector-tagged
 │   ├── universe_in.yaml            # 30 NSE tickers, sector-tagged
-│   ├── features.yaml               # which feature groups + their lookbacks
+│   │                                # (no features.yaml — see section 2.2)
 │   └── models/
 │       ├── lightgbm.yaml
 │       ├── xgboost.yaml
@@ -258,3 +258,30 @@ alphabench/
 **`metadata.json` beside every model.** Feature list, hyperparameters, git SHA, data hash, training date range. Without it, a model file six weeks old is unidentifiable and your results are unreproducible.
 
 **The two starred test files carry the project.** `test_leakage.py` and `test_splitters.py` are what convert "I built a model" into "I built a model I can defend." Write them in Weeks 3 and 4, before you have results to be attached to.
+
+## 2.2 Where the built repo departs from this tree
+
+This section is added retrospectively, after the project was built, to record every place
+the as-built repo diverges from the plan above and why — rather than silently editing the
+tree as if it had always read this way.
+
+**No `config/features.yaml`.** Part 2's tree above proposed externalising "which feature
+groups + their lookbacks" into YAML, mirroring `config/models/*.yaml`
+(section 2.1's hyperparameters). The two turned out not to be analogous. A model's
+hyperparameters are a flat, self-contained dict — exactly the shape YAML suits. The
+feature pipeline (`features/pipeline.py`) is not a declarative list of `(group,
+lookback)` pairs: it is roughly 30 named columns, most with a window baked into the
+column's own definition (`rsi_14`, `px_to_sma20`), several with no window at all
+(cross-sectional ranks, calendar flags), and one (`beta_60d`) that combines two series
+over a shared window via a hand-rolled rolling covariance/variance — not something a
+lookback list expresses. A `features.yaml` here would have to be either decorative (a
+copy of the numbers already in the code, read by nothing) or the front end of rewriting
+`pipeline.py` into a declarative feature-spec interpreter — a legitimate but much larger
+project than reconciling this drift, and one that risks silently changing the committed
+`features.parquet` the entire pipeline, including the sealed holdout, was computed from.
+The feature dictionary this project's own acceptance criteria actually ask for (PROPOSAL
+section 4.3, row 3 of the Week-by-week table: "feature dictionary documented — name,
+formula, lookback, rationale") already exists as prose in PROPOSAL section 4.3, and the
+exact feature list used by each trained model is recorded in that model's own
+`metadata.json` — which is the record, the same role `metadata.json` plays for
+hyperparameters per section 2.1.
